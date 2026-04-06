@@ -18,7 +18,7 @@ STUB_RESPONSE = (
 )
 
 
-def generate_response(query: str, context: list[str]) -> str:
+def generate_response(query: str, context: list[str], topic: str = "") -> str:
     from app.config import settings
 
     if not settings.gemini_api_key:
@@ -35,8 +35,10 @@ def generate_response(query: str, context: list[str]) -> str:
         )
 
         context_text = "\n\n".join(context) if context else "No specific context available."
+        topic_line = f"Topic focus: {topic}\n\n" if topic else ""
 
         prompt = (
+            f"{topic_line}"
             f"Context:\n{context_text}\n\n"
             f"Question: {query}\n\n"
             "Please answer the question based on the context provided."

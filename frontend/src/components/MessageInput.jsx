@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-function MessageInput({ onSend, disabled }) {
+function MessageInput({ onSend, disabled, topic }) {
   const [text, setText] = useState('')
 
   const handleSubmit = (e) => {
@@ -16,7 +16,7 @@ function MessageInput({ onSend, disabled }) {
         type="text"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Ask about nutrition..."
+        placeholder={topic ? `Ask about ${topic.replace(/_/g, ' ')}...` : 'Ask about nutrition...'}
         disabled={disabled}
         style={{
           flex: 1,

@@ -9,6 +9,18 @@ def test_chat_returns_200():
     assert response.status_code == 200
 
 
+def test_chat_with_topic_returns_200():
+    response = client.post("/api/chat", json={"message": "What should I eat?", "topic": "macronutrients"})
+    assert response.status_code == 200
+
+
+def test_chat_without_topic_defaults_to_empty():
+    response = client.post("/api/chat", json={"message": "How much water should I drink?"})
+    data = response.json()
+    assert response.status_code == 200
+    assert "response" in data
+
+
 def test_chat_response_has_required_fields():
     response = client.post("/api/chat", json={"message": "What foods have vitamin C?"})
     data = response.json()

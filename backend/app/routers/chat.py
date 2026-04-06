@@ -12,6 +12,6 @@ async def chat(request: ChatRequest):
     if not request.message.strip():
         raise HTTPException(status_code=422, detail="Message cannot be empty")
 
-    context = retrieve_context(request.message)
-    response_text = generate_response(request.message, context)
+    context = retrieve_context(request.message, request.topic)
+    response_text = generate_response(request.message, context, request.topic)
     return ChatResponse(response=response_text, sources=[])

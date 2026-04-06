@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import Message from './Message'
 
-function ChatWindow({ messages, loading }) {
+function ChatWindow({ messages, loading, topic }) {
   const bottomRef = useRef(null)
 
   useEffect(() => {
@@ -18,7 +18,9 @@ function ChatWindow({ messages, loading }) {
     }}>
       {messages.length === 0 && (
         <p style={{ color: '#999', textAlign: 'center', marginTop: '20px' }}>
-          Ask me anything about nutrition.
+          {topic
+            ? `Ask me anything about ${topic.replace(/_/g, ' ')}.`
+            : 'Select a topic above or ask me anything about nutrition.'}
         </p>
       )}
       {messages.map((msg, i) => (
