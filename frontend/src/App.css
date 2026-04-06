@@ -19,8 +19,136 @@ body {
   flex-direction: column;
 }
 
-.app h1 {
-  text-align: center;
+.app-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 20px;
+}
+
+.app h1 {
   font-size: 1.5rem;
+}
+
+.nav-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.nav-tab {
+  padding: 4px 14px;
+  border: 1px solid #000;
+  background: #fff;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+.nav-tab.active {
+  background: #000;
+  color: #fff;
+}
+
+/* Admin Dashboard */
+.admin-dashboard {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-header h2 {
+  font-size: 1.1rem;
+}
+
+.refresh-btn {
+  padding: 4px 12px;
+  border: 1px solid #000;
+  background: #fff;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.admin-error {
+  color: #c00;
+  font-size: 0.85rem;
+}
+
+.stats-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.stat-card {
+  border: 1px solid #000;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  min-width: 90px;
+}
+
+.stat-value {
+  font-size: 1.3rem;
+  font-weight: bold;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  margin-top: 2px;
+  color: #555;
+}
+
+.logs-table-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid #000;
+}
+
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.logs-table th,
+.logs-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+  white-space: nowrap;
+}
+
+.logs-table th {
+  background: #000;
+  color: #fff;
+  position: sticky;
+  top: 0;
+}
+
+.logs-table td:nth-child(3) {
+  white-space: normal;
+  max-width: 200px;
+  word-break: break-word;
+}
+
+.status-ok {
+  color: #080;
+}
+
+.status-err {
+  color: #c00;
 }

@@ -2,12 +2,14 @@ import { useState } from 'react'
 import ChatWindow from './components/ChatWindow'
 import MessageInput from './components/MessageInput'
 import TopicSelector from './components/TopicSelector'
+import AdminDashboard from './components/AdminDashboard'
 import './App.css'
 
 function App() {
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
   const [topic, setTopic] = useState('')
+  const [view, setView] = useState('chat')
 
   const handleTopicChange = (newTopic) => {
     setTopic(newTopic)
@@ -38,10 +40,33 @@ function App() {
 
   return (
     <div className="app">
-      <h1>NutriBot</h1>
-      <TopicSelector value={topic} onChange={handleTopicChange} />
-      <ChatWindow messages={messages} loading={loading} topic={topic} />
-      <MessageInput onSend={sendMessage} disabled={loading} topic={topic} />
+      <div className="app-nav">
+        <h1>NutriBot</h1>
+        <div className="nav-tabs">
+          <button
+            className={`nav-tab${view === 'chat' ? ' active' : ''}`}
+            onClick={() => setView('chat')}
+          >
+            Chat
+          </button>
+          <button
+            className={`nav-tab${view === 'admin' ? ' active' : ''}`}
+            onClick={() => setView('admin')}
+          >
+            Admin
+          </button>
+        </div>
+      </div>
+
+      {view === 'chat' ? (
+        <>
+          <TopicSelector value={topic} onChange={handleTopicChange} />
+          <ChatWindow messages={messages} loading={loading} topic={topic} />
+          <MessageInput onSend={sendMessage} disabled={loading} topic={topic} />
+        </>
+      ) : (
+        <AdminDashboard />
+      )}
     </div>
   )
 }
