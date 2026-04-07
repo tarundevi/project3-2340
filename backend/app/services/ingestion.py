@@ -239,6 +239,29 @@ def ingest_uploaded_file(filename: str, content: bytes, topic: str = "") -> dict
     return ingest_text_document(content=text, title=title, topic=topic)
 
 
+def delete_document(title: str, url: str, topic: str) -> int:
+    client = get_client()
+    collections = {collection.name for collection in client.list_collections()}
+    if COLLECTION_NAME not in collections:
+        return 0
+
+    collection = get_collection(create=False)
+    results = collection.get(where={"title": {"$eq": title}})
+    ids_to_delete = []
+    for i, metadata in enumerate(results.get("metadatas") or []):
+        metadata = metadata or {}
+        if (
+            (metadata.get("url") or "") == (url or "")
+            and (metadata.get("topic") or "") == (topic or "")
+        ):
+            ids_to_delete.append(results["ids"][i])
+
+    if ids_to_delete:
+        collection.delete(ids=ids_to_delete)
+
+    return len(ids_to_delete)
+
+
 def get_collection_overview(limit: int = 20) -> dict:
     client = get_client()
     collections = {collection.name for collection in client.list_collections()}

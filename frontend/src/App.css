@@ -225,7 +225,8 @@ body {
 
 .developer-dashboard {
   flex: 1;
-  overflow: hidden;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -360,8 +361,6 @@ body {
 }
 
 .logs-table-wrapper {
-  flex: 1;
-  overflow-y: auto;
   border: 1px solid #000;
 }
 
@@ -402,4 +401,24 @@ body {
 
 .status-err {
   color: #c00;
+}
+
+.delete-btn {
+  padding: 2px 8px;
+  border: 1px solid #c00;
+  background: #fff;
+  color: #c00;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 0.75rem;
+}
+
+.delete-btn:hover {
+  background: #c00;
+  color: #fff;
+}
+
+.delete-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }

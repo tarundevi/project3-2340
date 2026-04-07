@@ -49,6 +49,7 @@ export default function DeveloperDashboard() {
   const [collection, setCollection] = useState(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [deleting, setDeleting] = useState(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -68,6 +69,37 @@ export default function DeveloperDashboard() {
   useEffect(() => {
     loadCollection()
   }, [])
+
+  const handleDelete = async (document) => {
+    if (!window.confirm(`Remove "${document.title}" from the knowledge base?`)) return
+
+    const key = `${document.title}::${document.url}::${document.topic}`
+    setDeleting(key)
+    setError('')
+    setSuccess('')
+
+    try {
+      const response = await fetch('/api/developer/document', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: document.title,
+          url: document.url,
+          topic: document.topic,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.detail || 'Delete failed.')
+      }
+      setSuccess(data.message)
+      setCollection(data.collection)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setDeleting(null)
+    }
+  }
 
   const handleTextSubmit = async (event) => {
     event.preventDefault()
@@ -335,31 +367,44 @@ export default function DeveloperDashboard() {
               <th>Source</th>
               <th>Topic</th>
               <th>Link</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {collection?.documents?.length === 0 && !loading && (
               <tr>
-                <td colSpan={3} style={{ textAlign: 'center', padding: '16px' }}>
+                <td colSpan={4} style={{ textAlign: 'center', padding: '16px' }}>
                   No sources yet.
                 </td>
               </tr>
             )}
-            {collection?.documents?.map((document, index) => (
-              <tr key={`${document.title}-${index}`}>
-                <td>{document.title}</td>
-                <td>{document.topic || '—'}</td>
-                <td>
-                  {document.url ? (
-                    <a className="table-link" href={document.url} target="_blank" rel="noreferrer">
-                      Open
-                    </a>
-                  ) : (
-                    '—'
-                  )}
-                </td>
-              </tr>
-            ))}
+            {collection?.documents?.map((document, index) => {
+              const key = `${document.title}::${document.url}::${document.topic}`
+              return (
+                <tr key={`${document.title}-${index}`}>
+                  <td>{document.title}</td>
+                  <td>{document.topic || '—'}</td>
+                  <td>
+                    {document.url ? (
+                      <a className="table-link" href={document.url} target="_blank" rel="noreferrer">
+                        Open
+                      </a>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                  <td>
+                    <button
+                      className="delete-btn"
+                      onClick={() => handleDelete(document)}
+                      disabled={deleting === key || submitting}
+                    >
+                      {deleting === key ? 'Removing…' : 'Delete'}
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
