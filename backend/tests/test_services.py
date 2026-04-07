@@ -4,17 +4,17 @@ from app.services.llm import generate_response
 
 def test_retrieve_context_returns_list():
     result = retrieve_context("How much protein should I eat?")
-    assert isinstance(result, list)
+    assert isinstance(result["context"], list)
 
 
 def test_retrieve_context_with_topic_returns_list():
     result = retrieve_context("What vitamins are important?", topic="vitamins_minerals")
-    assert isinstance(result, list)
+    assert isinstance(result["context"], list)
 
 
 def test_retrieve_context_returns_strings():
     result = retrieve_context("vitamin C foods")
-    for item in result:
+    for item in result["context"]:
         assert isinstance(item, str)
 
 

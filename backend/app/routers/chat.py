@@ -17,9 +17,11 @@ async def chat(request: ChatRequest):
 
     start = time.monotonic()
     success = True
+    sources = []
     try:
-        context = retrieve_context(request.message, request.topic)
-        response_text = generate_response(request.message, context, request.topic)
+        retrieval = retrieve_context(request.message, request.topic)
+        response_text = generate_response(request.message, retrieval["context"], request.topic)
+        sources = retrieval["sources"]
     except Exception:
         success = False
         raise
@@ -32,4 +34,4 @@ async def chat(request: ChatRequest):
             success=success,
         )
 
-    return ChatResponse(response=response_text, sources=[])
+    return ChatResponse(response=response_text, sources=sources)

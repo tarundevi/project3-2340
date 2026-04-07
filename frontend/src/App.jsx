@@ -3,6 +3,7 @@ import ChatWindow from './components/ChatWindow'
 import MessageInput from './components/MessageInput'
 import TopicSelector from './components/TopicSelector'
 import AdminDashboard from './components/AdminDashboard'
+import DeveloperDashboard from './components/DeveloperDashboard'
 import './App.css'
 
 function App() {
@@ -28,10 +29,18 @@ function App() {
         body: JSON.stringify({ message: text, topic }),
       })
       const data = await res.json()
-      const botMessage = { role: 'bot', content: data.response }
+      const botMessage = {
+        role: 'bot',
+        content: data.response,
+        sources: Array.isArray(data.sources) ? data.sources : [],
+      }
       setMessages((prev) => [...prev, botMessage])
     } catch {
-      const errorMessage = { role: 'bot', content: 'Sorry, something went wrong.' }
+      const errorMessage = {
+        role: 'bot',
+        content: 'Sorry, something went wrong.',
+        sources: [],
+      }
       setMessages((prev) => [...prev, errorMessage])
     } finally {
       setLoading(false)
@@ -55,6 +64,12 @@ function App() {
           >
             Admin
           </button>
+          <button
+            className={`nav-tab${view === 'developer' ? ' active' : ''}`}
+            onClick={() => setView('developer')}
+          >
+            Developer
+          </button>
         </div>
       </div>
 
@@ -64,8 +79,10 @@ function App() {
           <ChatWindow messages={messages} loading={loading} topic={topic} />
           <MessageInput onSend={sendMessage} disabled={loading} topic={topic} />
         </>
-      ) : (
+      ) : view === 'admin' ? (
         <AdminDashboard />
+      ) : (
+        <DeveloperDashboard />
       )}
     </div>
   )

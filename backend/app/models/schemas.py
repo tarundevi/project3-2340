@@ -6,6 +6,11 @@ class ChatRequest(BaseModel):
     topic: str = ""
 
 
+class SourceItem(BaseModel):
+    title: str
+    url: str = ""
+
+
 class ChatResponse(BaseModel):
     response: str
-    sources: list[str] = []
+    sources: list[SourceItem] = []

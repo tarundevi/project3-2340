@@ -9,22 +9,16 @@ function ChatWindow({ messages, loading, topic }) {
   }, [messages])
 
   return (
-    <div style={{
-      flex: 1,
-      overflowY: 'auto',
-      border: '1px solid #000',
-      padding: '10px',
-      marginBottom: '10px',
-    }}>
+    <div className="chat-window">
       {messages.length === 0 && (
-        <p style={{ color: '#999', textAlign: 'center', marginTop: '20px' }}>
+        <p className="chat-empty">
           {topic
             ? `Ask me anything about ${topic.replace(/_/g, ' ')}.`
             : 'Select a topic above or ask me anything about nutrition.'}
         </p>
       )}
       {messages.map((msg, i) => (
-        <Message key={i} role={msg.role} content={msg.content} />
+        <Message key={i} role={msg.role} content={msg.content} sources={msg.sources} />
       ))}
       {loading && (
         <p style={{ color: '#999', fontStyle: 'italic' }}>Thinking...</p>
