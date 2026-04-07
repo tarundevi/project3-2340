@@ -9,6 +9,8 @@ from app.services.ingestion import (
     ingest_text_document,
     ingest_uploaded_file,
     ingest_url_document,
+    is_duplicate_title,
+    preprocess_text,
     reload_collection,
 )
 
@@ -36,6 +38,20 @@ class DeleteDocumentRequest(BaseModel):
 @router.get("/collection")
 def collection_overview():
     return get_collection_overview()
+
+
+@router.post("/preprocess")
+def preprocess_preview(request: TextIngestRequest):
+    result = preprocess_text(request.content)
+    title = " ".join(request.title.split()).strip() or "Untitled Document"
+    duplicate = is_duplicate_title(title)
+    return {
+        "original_word_count": result["original_word_count"],
+        "cleaned_word_count": result["cleaned_word_count"],
+        "words_removed": result["words_removed"],
+        "preview": result["cleaned"][:300],
+        "duplicate_warning": duplicate,
+    }
 
 
 @router.post("/collection/clear")
@@ -66,8 +82,9 @@ def ingest_text(request: TextIngestRequest):
     except IngestionError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    duplicate_msg = " Warning: duplicate title already exists." if result.get("duplicate_warning") else ""
     return {
-        "message": f"Added {result['chunk_count']} chunk(s) from {result['title']}.",
+        "message": f"Added {result['chunk_count']} chunk(s) from {result['title']}. Preprocessed: {result['original_word_count']} → {result['cleaned_word_count']} words.{duplicate_msg}",
         "document": result,
         "collection": get_collection_overview(),
     }

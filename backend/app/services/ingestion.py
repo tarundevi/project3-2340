@@ -1,6 +1,7 @@
 import socket
 import ssl
 import re
+import unicodedata
 import uuid
 from io import BytesIO
 from pathlib import Path
@@ -99,6 +100,46 @@ def _safe_title(title: str, fallback: str) -> str:
     return cleaned or fallback
 
 
+def preprocess_text(text: str) -> dict:
+    original_word_count = len(text.split())
+
+    # Normalize unicode to composed form
+    text = unicodedata.normalize("NFC", text)
+
+    # Strip control characters but keep newlines and tabs
+    text = "".join(
+        ch for ch in text
+        if ch in ("\n", "\t") or not unicodedata.category(ch).startswith("C")
+    )
+
+    # Collapse excessive repeated punctuation (e.g. "......" → "...")
+    text = re.sub(r"([.!?,]){4,}", r"\1\1\1", text)
+
+    # Normalize whitespace
+    text = re.sub(r"[ \t]{2,}", " ", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = text.strip()
+
+    cleaned_word_count = len(text.split())
+
+    return {
+        "cleaned": text,
+        "original_word_count": original_word_count,
+        "cleaned_word_count": cleaned_word_count,
+        "words_removed": original_word_count - cleaned_word_count,
+    }
+
+
+def is_duplicate_title(title: str) -> bool:
+    client = get_client()
+    collections = {c.name for c in client.list_collections()}
+    if COLLECTION_NAME not in collections:
+        return False
+    collection = get_collection(create=False)
+    results = collection.get(where={"title": {"$eq": title}})
+    return len(results.get("ids") or []) > 0
+
+
 def _decode_uploaded_file(filename: str, content: bytes) -> str:
     suffix = Path(filename).suffix.lower()
     if suffix not in {".txt", ".md", ".markdown", ".json", ".csv", ".pdf"}:
@@ -144,11 +185,18 @@ def _decode_uploaded_file(filename: str, content: bytes) -> str:
 
 
 def ingest_text_document(content: str, title: str, topic: str = "", url: str = "") -> dict:
-    cleaned_content = content.strip()
-    if not cleaned_content:
+    if not content.strip():
         raise IngestionError("Content cannot be empty.")
 
     document_title = _safe_title(title, "Untitled Document")
+
+    preprocessed = preprocess_text(content)
+    cleaned_content = preprocessed["cleaned"]
+    duplicate = is_duplicate_title(document_title)
+
+    if not cleaned_content:
+        raise IngestionError("Content was empty after preprocessing.")
+
     chunks = _chunk_text(cleaned_content)
     if not chunks:
         raise IngestionError("Content could not be converted into document chunks.")
@@ -177,6 +225,10 @@ def ingest_text_document(content: str, title: str, topic: str = "", url: str = "
         "url": url.strip(),
         "topic": topic_value,
         "chunk_count": len(chunks),
+        "original_word_count": preprocessed["original_word_count"],
+        "cleaned_word_count": preprocessed["cleaned_word_count"],
+        "words_removed": preprocessed["words_removed"],
+        "duplicate_warning": duplicate,
     }
 
 

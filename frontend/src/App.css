@@ -432,6 +432,45 @@ body {
   color: #c00;
 }
 
+.preprocess-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preview-btn {
+  padding: 8px 16px;
+  border: 1px solid #000;
+  background: #fff;
+  color: #000;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.preview-btn:hover {
+  background: #f0f0f0;
+}
+
+.preview-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.preprocess-preview {
+  border: 1px solid #000;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.8rem;
+  background: #f8f8f8;
+}
+
+.preprocess-title {
+  font-weight: bold;
+}
+
 .delete-btn {
   padding: 2px 8px;
   border: 1px solid #c00;

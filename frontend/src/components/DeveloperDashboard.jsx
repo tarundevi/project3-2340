@@ -51,6 +51,8 @@ export default function DeveloperDashboard() {
   const [submitting, setSubmitting] = useState(false)
   const [deleting, setDeleting] = useState(null)
   const [maintenanceAction, setMaintenanceAction] = useState('')
+  const [previewing, setPreviewing] = useState(false)
+  const [previewData, setPreviewData] = useState(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -135,6 +137,30 @@ export default function DeveloperDashboard() {
     }
   }
 
+  const handlePreview = async () => {
+    if (!textForm.title || !textForm.content) {
+      setError('Enter a title and content to preview.')
+      return
+    }
+    setPreviewing(true)
+    setError('')
+    setPreviewData(null)
+    try {
+      const response = await fetch('/api/developer/preprocess', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(textForm),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.detail || 'Preview failed.')
+      setPreviewData(data)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setPreviewing(false)
+    }
+  }
+
   const handleTextSubmit = async (event) => {
     event.preventDefault()
     setSubmitting(true)
@@ -155,6 +181,7 @@ export default function DeveloperDashboard() {
       setSuccess(data.message)
       setCollection(data.collection)
       setTextForm(INITIAL_TEXT_FORM)
+      setPreviewData(null)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -365,9 +392,25 @@ export default function DeveloperDashboard() {
               />
             </label>
 
-            <button className="developer-submit" type="submit" disabled={submitting}>
-              {submitting ? 'Saving…' : 'Add Text Source'}
-            </button>
+            <div className="preprocess-actions">
+              <button className="developer-submit" type="submit" disabled={submitting || previewing}>
+                {submitting ? 'Saving…' : 'Add Text Source'}
+              </button>
+              <button className="preview-btn" type="button" onClick={handlePreview} disabled={submitting || previewing}>
+                {previewing ? 'Checking…' : 'Preview Cleaning'}
+              </button>
+            </div>
+
+            {previewData && (
+              <div className="preprocess-preview">
+                <p className="preprocess-title">Preprocessing Report</p>
+                <p>Words: {previewData.original_word_count} → {previewData.cleaned_word_count} ({previewData.words_removed} removed)</p>
+                {previewData.duplicate_warning && (
+                  <p className="admin-error">Warning: a document with this title already exists in the knowledge base.</p>
+                )}
+                <p className="developer-help">Cleaned preview: &quot;{previewData.preview}{previewData.preview.length === 300 ? '…' : ''}&quot;</p>
+              </div>
+            )}
           </form>
         ) : mode === 'url' ? (
           <form className="developer-form" onSubmit={handleUrlSubmit}>
