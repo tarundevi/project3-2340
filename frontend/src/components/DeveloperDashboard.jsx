@@ -50,6 +50,7 @@ export default function DeveloperDashboard() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [deleting, setDeleting] = useState(null)
+  const [maintenanceAction, setMaintenanceAction] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
@@ -92,12 +93,45 @@ export default function DeveloperDashboard() {
       if (!response.ok) {
         throw new Error(data.detail || 'Delete failed.')
       }
+
       setSuccess(data.message)
       setCollection(data.collection)
     } catch (err) {
       setError(err.message)
     } finally {
       setDeleting(null)
+    }
+  }
+
+  const handleMaintenance = async (action) => {
+    const labels = {
+      clear: 'clear the knowledge base',
+      reload: 'reload embeddings while keeping the current documents',
+    }
+
+    if (!window.confirm(`Are you sure you want to ${labels[action]}?`)) {
+      return
+    }
+
+    setMaintenanceAction(action)
+    setError('')
+    setSuccess('')
+
+    try {
+      const response = await fetch(`/api/developer/collection/${action}`, {
+        method: 'POST',
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.detail || `Failed to ${action} knowledge base.`)
+      }
+
+      setSuccess(data.message)
+      setCollection(data.collection)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setMaintenanceAction('')
     }
   }
 
@@ -212,6 +246,41 @@ export default function DeveloperDashboard() {
         <div className="stat-card">
           <span className="stat-value">{collection?.exists ? 'Ready' : 'Empty'}</span>
           <span className="stat-label">Collection State</span>
+        </div>
+      </div>
+
+      <div className="developer-panel">
+        <div className="developer-header">
+          <h3>Maintenance</h3>
+        </div>
+
+        <p className="developer-help">
+          Clear removes all documents and embeddings. Reload keeps the current documents but rebuilds their embeddings in a fresh Chroma collection.
+        </p>
+
+        <div className="maintenance-info-card">
+          <strong>Clear vs Reload</strong>
+          <p>Clear: deletes every stored document and embedding.</p>
+          <p>Reload: keeps documents, clears the old embeddings, and regenerates embeddings from those documents.</p>
+        </div>
+
+        <div className="maintenance-actions">
+          <button
+            className="refresh-btn danger-btn"
+            onClick={() => handleMaintenance('clear')}
+            disabled={loading || submitting || Boolean(maintenanceAction)}
+            type="button"
+          >
+            {maintenanceAction === 'clear' ? 'Clearing…' : 'Clear Knowledge Base'}
+          </button>
+          <button
+            className="refresh-btn"
+            onClick={() => handleMaintenance('reload')}
+            disabled={loading || submitting || Boolean(maintenanceAction)}
+            type="button"
+          >
+            {maintenanceAction === 'reload' ? 'Reloading…' : 'Reload Clean Collection'}
+          </button>
         </div>
       </div>
 

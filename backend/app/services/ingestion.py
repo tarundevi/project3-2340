@@ -262,6 +262,39 @@ def delete_document(title: str, url: str, topic: str) -> int:
     return len(ids_to_delete)
 
 
+def clear_collection() -> dict:
+    client = get_client()
+    collections = {collection.name for collection in client.list_collections()}
+    if COLLECTION_NAME in collections:
+        client.delete_collection(COLLECTION_NAME)
+    return get_collection_overview()
+
+
+def reload_collection() -> dict:
+    client = get_client()
+    collections = {collection.name for collection in client.list_collections()}
+    if COLLECTION_NAME not in collections:
+        get_collection(create=True)
+        return get_collection_overview()
+
+    collection = get_collection(create=False)
+    snapshot = collection.get(include=["documents", "metadatas"])
+    ids = snapshot.get("ids", []) or []
+    documents = snapshot.get("documents", []) or []
+    metadatas = snapshot.get("metadatas", []) or []
+
+    client.delete_collection(COLLECTION_NAME)
+    reloaded_collection = get_collection(create=True)
+    if ids:
+        reloaded_collection.upsert(
+            ids=ids,
+            documents=documents,
+            metadatas=metadatas,
+        )
+
+    return get_collection_overview()
+
+
 def get_collection_overview(limit: int = 20) -> dict:
     client = get_client()
     collections = {collection.name for collection in client.list_collections()}

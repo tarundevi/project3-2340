@@ -66,6 +66,58 @@ def test_collection_overview_empty(monkeypatch, tmp_path: Path):
     assert data["chunk_count"] == 0
 
 
+def test_clear_collection_removes_documents(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr("app.config.settings.chroma_persist_dir", str(tmp_path / "chromadb"))
+
+    ingest_response = client.post(
+        "/api/developer/ingest/text",
+        json={
+            "title": "Outdated Protein Guidance",
+            "content": "This document should be removed.",
+            "topic": "macronutrients",
+        },
+    )
+    assert ingest_response.status_code == 200
+
+    response = client.post("/api/developer/collection/clear")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["message"] == "Knowledge base cleared."
+    assert data["collection"]["exists"] is False
+    assert data["collection"]["chunk_count"] == 0
+    assert data["collection"]["documents"] == []
+
+
+def test_reload_collection_rebuilds_embeddings_and_keeps_documents(monkeypatch, tmp_path: Path):
+    monkeypatch.setattr("app.config.settings.chroma_persist_dir", str(tmp_path / "chromadb"))
+
+    ingest_response = client.post(
+        "/api/developer/ingest/text",
+        json={
+            "title": "Incorrect Hydration Guidance",
+            "content": "This document should not survive reload.",
+            "topic": "hydration",
+        },
+    )
+    assert ingest_response.status_code == 200
+
+    response = client.post("/api/developer/collection/reload")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["message"] == "Knowledge base embeddings reloaded from existing documents."
+    assert data["collection"]["exists"] is True
+    assert data["collection"]["chunk_count"] == 1
+    assert data["collection"]["documents"] == [
+        {
+            "title": "Incorrect Hydration Guidance",
+            "url": "",
+            "topic": "hydration",
+        }
+    ]
+
+
 def test_ingest_file_adds_document(monkeypatch, tmp_path: Path):
     monkeypatch.setattr("app.config.settings.chroma_persist_dir", str(tmp_path / "chromadb"))
 

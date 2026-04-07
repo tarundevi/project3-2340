@@ -29,16 +29,17 @@ def generate_response(query: str, context: list[str], topic: str = "") -> str:
         import google.generativeai as genai
 
         genai.configure(api_key=settings.gemini_api_key)
-        model = genai.GenerativeModel(
-            model_name=settings.gemini_model_id,
-            system_instruction=SYSTEM_PROMPT,
-        )
+        model_kwargs = {"model_name": settings.gemini_model_id}
+        if not settings.gemini_model_id.startswith("gemma-"):
+            model_kwargs["system_instruction"] = SYSTEM_PROMPT
+        model = genai.GenerativeModel(**model_kwargs)
 
         context_text = "\n\n".join(context) if context else "No specific context available."
         topic_line = f"Topic focus: {topic}\n\n" if topic else ""
 
         prompt = (
-            f"{topic_line}"
+            (f"Instructions:\n{SYSTEM_PROMPT}\n\n" if settings.gemini_model_id.startswith("gemma-") else "")
+            + f"{topic_line}"
             f"Context:\n{context_text}\n\n"
             f"Question: {query}\n\n"
             "Please answer the question based on the context provided."

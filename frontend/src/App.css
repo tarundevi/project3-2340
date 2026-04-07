@@ -269,6 +269,35 @@ body {
   font-size: 0.85rem;
 }
 
+.maintenance-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.maintenance-info-card {
+  border: 1px solid #999;
+  padding: 10px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.maintenance-info-card p {
+  margin-top: 4px;
+}
+
+.danger-btn {
+  border-color: #c00;
+  color: #c00;
+}
+
+.danger-btn:hover:not(:disabled),
+.danger-btn:focus-visible:not(:disabled) {
+  background: #c00;
+  color: #fff;
+  outline: none;
+}
+
 .developer-form {
   display: flex;
   flex-direction: column;

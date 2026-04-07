@@ -3,11 +3,13 @@ from pydantic import BaseModel
 
 from app.services.ingestion import (
     IngestionError,
+    clear_collection,
     delete_document,
     get_collection_overview,
     ingest_text_document,
     ingest_uploaded_file,
     ingest_url_document,
+    reload_collection,
 )
 
 router = APIRouter(prefix="/api/developer")
@@ -34,6 +36,22 @@ class DeleteDocumentRequest(BaseModel):
 @router.get("/collection")
 def collection_overview():
     return get_collection_overview()
+
+
+@router.post("/collection/clear")
+def clear_knowledge_base():
+    return {
+        "message": "Knowledge base cleared.",
+        "collection": clear_collection(),
+    }
+
+
+@router.post("/collection/reload")
+def reload_knowledge_base():
+    return {
+        "message": "Knowledge base embeddings reloaded from existing documents.",
+        "collection": reload_collection(),
+    }
 
 
 @router.post("/ingest/text")
