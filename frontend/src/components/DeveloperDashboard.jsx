@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const TOPICS = [
   { value: '', label: 'All Topics' },
@@ -29,6 +29,8 @@ const INITIAL_FILE_FORM = {
   file: null,
 }
 
+const EMPTY_EVAL_CASE = { question: '', expected_keywords: '', topic: '' }
+
 function TopicField({ value, onChange, id }) {
   return (
     <select id={id} className="developer-select" value={value} onChange={(e) => onChange(e.target.value)}>
@@ -55,6 +57,13 @@ export default function DeveloperDashboard() {
   const [previewData, setPreviewData] = useState(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+
+  const [evalCases, setEvalCases] = useState([{ ...EMPTY_EVAL_CASE }])
+  const [evalRunning, setEvalRunning] = useState(false)
+  const [evalResults, setEvalResults] = useState(null)
+  const [evalError, setEvalError] = useState('')
+  const [expandedResult, setExpandedResult] = useState(null)
+  const evalResultsRef = useRef(null)
 
   const loadCollection = async () => {
     setLoading(true)
@@ -249,6 +258,45 @@ export default function DeveloperDashboard() {
       setError(err.message)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const updateEvalCase = (index, field, value) => {
+    setEvalCases((prev) => prev.map((c, i) => (i === index ? { ...c, [field]: value } : c)))
+  }
+
+  const addEvalCase = () => {
+    setEvalCases((prev) => [...prev, { ...EMPTY_EVAL_CASE }])
+  }
+
+  const removeEvalCase = (index) => {
+    setEvalCases((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  const handleRunEval = async () => {
+    const valid = evalCases.filter((c) => c.question.trim() && c.expected_keywords.trim())
+    if (valid.length === 0) {
+      setEvalError('Add at least one test case with a question and expected keywords.')
+      return
+    }
+    setEvalRunning(true)
+    setEvalError('')
+    setEvalResults(null)
+    setExpandedResult(null)
+    try {
+      const response = await fetch('/api/developer/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cases: valid }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.detail || 'Evaluation failed.')
+      setEvalResults(data)
+      setTimeout(() => evalResultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+    } catch (err) {
+      setEvalError(err.message)
+    } finally {
+      setEvalRunning(false)
     }
   }
 
@@ -469,6 +517,122 @@ export default function DeveloperDashboard() {
               {submitting ? 'Uploading…' : 'Upload File'}
             </button>
           </form>
+        )}
+      </div>
+
+      <div className="developer-panel">
+        <div className="developer-header">
+          <h3>Accuracy Test</h3>
+        </div>
+
+        <p className="developer-help">
+          Define known questions and expected keywords. Each response is checked for all keywords (comma-separated). A case passes when every keyword is found in the response.
+        </p>
+
+        {evalError && <p className="admin-error">{evalError}</p>}
+
+        <div className="eval-cases">
+          {evalCases.map((c, i) => (
+            <div key={i} className="eval-case">
+              <div className="eval-case-header">
+                <span className="eval-case-label">Case {i + 1}</span>
+                {evalCases.length > 1 && (
+                  <button
+                    className="delete-btn"
+                    type="button"
+                    onClick={() => removeEvalCase(i)}
+                    disabled={evalRunning}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              <label className="developer-field">
+                <span>Question</span>
+                <input
+                  className="developer-input"
+                  type="text"
+                  value={c.question}
+                  onChange={(e) => updateEvalCase(i, 'question', e.target.value)}
+                  placeholder="How much protein do adults need daily?"
+                  disabled={evalRunning}
+                />
+              </label>
+              <label className="developer-field">
+                <span>Expected Keywords <span className="developer-help">(comma-separated)</span></span>
+                <input
+                  className="developer-input"
+                  type="text"
+                  value={c.expected_keywords}
+                  onChange={(e) => updateEvalCase(i, 'expected_keywords', e.target.value)}
+                  placeholder="protein, grams, daily"
+                  disabled={evalRunning}
+                />
+              </label>
+              <label className="developer-field">
+                <span>Topic <span className="developer-help">(optional)</span></span>
+                <TopicField
+                  id={`eval-topic-${i}`}
+                  value={c.topic}
+                  onChange={(value) => updateEvalCase(i, 'topic', value)}
+                />
+              </label>
+            </div>
+          ))}
+        </div>
+
+        <div className="eval-actions">
+          <button className="preview-btn" type="button" onClick={addEvalCase} disabled={evalRunning}>
+            + Add Case
+          </button>
+          <button className="developer-submit" type="button" onClick={handleRunEval} disabled={evalRunning}>
+            {evalRunning ? 'Running…' : 'Run Accuracy Test'}
+          </button>
+        </div>
+
+        {evalResults && (
+          <div className="eval-results" ref={evalResultsRef}>
+            <div className="eval-summary">
+              <div className="eval-summary-score" data-pass={evalResults.failed === 0}>
+                {evalResults.accuracy_percent}%
+              </div>
+              <div className="eval-summary-detail">
+                <strong>Accuracy</strong>
+                <span>{evalResults.passed} passed · {evalResults.failed} failed · {evalResults.total} total</span>
+              </div>
+            </div>
+
+            {evalResults.results.map((r, i) => (
+              <div key={i} className={`eval-result-row ${r.passed ? 'eval-pass' : 'eval-fail'}`}>
+                <div className="eval-result-header" onClick={() => setExpandedResult(expandedResult === i ? null : i)} style={{ cursor: 'pointer' }}>
+                  <span className="eval-status-badge">{r.passed ? 'PASS' : 'FAIL'}</span>
+                  <span className="eval-result-question">{r.question}</span>
+                  <span className="eval-result-time">{r.response_time_ms}ms</span>
+                  <span className="eval-expand-toggle">{expandedResult === i ? '▲' : '▼'}</span>
+                </div>
+
+                {expandedResult === i && (
+                  <div className="eval-result-body">
+                    {r.error && <p className="admin-error">Error: {r.error}</p>}
+                    <div className="eval-keywords-row">
+                      {r.matched_keywords.map((kw) => (
+                        <span key={kw} className="eval-keyword eval-keyword-match">{kw}</span>
+                      ))}
+                      {r.missing_keywords.map((kw) => (
+                        <span key={kw} className="eval-keyword eval-keyword-miss">{kw}</span>
+                      ))}
+                    </div>
+                    {r.actual_response && (
+                      <div className="eval-response-preview">
+                        <p className="eval-response-label">Response</p>
+                        <p className="eval-response-text">{r.actual_response}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
