@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { apiUrl } from '../lib/api'
 
 const TOPICS = [
   { value: '', label: 'All Topics' },
@@ -68,7 +69,7 @@ export default function DeveloperDashboard() {
   const loadCollection = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/developer/collection')
+      const response = await fetch(apiUrl('/api/developer/collection'))
       const data = await response.json()
       setCollection(data)
     } catch {
@@ -91,7 +92,7 @@ export default function DeveloperDashboard() {
     setSuccess('')
 
     try {
-      const response = await fetch('/api/developer/document', {
+      const response = await fetch(apiUrl('/api/developer/document'), {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -129,7 +130,7 @@ export default function DeveloperDashboard() {
     setSuccess('')
 
     try {
-      const response = await fetch(`/api/developer/collection/${action}`, {
+      const response = await fetch(apiUrl(`/api/developer/collection/${action}`), {
         method: 'POST',
       })
       const data = await response.json()
@@ -155,7 +156,7 @@ export default function DeveloperDashboard() {
     setError('')
     setPreviewData(null)
     try {
-      const response = await fetch('/api/developer/preprocess', {
+      const response = await fetch(apiUrl('/api/developer/preprocess'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(textForm),
@@ -177,7 +178,7 @@ export default function DeveloperDashboard() {
     setSuccess('')
 
     try {
-      const response = await fetch('/api/developer/ingest/text', {
+      const response = await fetch(apiUrl('/api/developer/ingest/text'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(textForm),
@@ -205,7 +206,7 @@ export default function DeveloperDashboard() {
     setSuccess('')
 
     try {
-      const response = await fetch('/api/developer/ingest/url', {
+      const response = await fetch(apiUrl('/api/developer/ingest/url'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(urlForm),
@@ -241,7 +242,7 @@ export default function DeveloperDashboard() {
       formData.append('file', fileForm.file)
       formData.append('topic', fileForm.topic)
 
-      const response = await fetch('/api/developer/ingest/file', {
+      const response = await fetch(apiUrl('/api/developer/ingest/file'), {
         method: 'POST',
         body: formData,
       })
@@ -284,7 +285,7 @@ export default function DeveloperDashboard() {
     setEvalResults(null)
     setExpandedResult(null)
     try {
-      const response = await fetch('/api/developer/evaluate', {
+      const response = await fetch(apiUrl('/api/developer/evaluate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cases: valid }),

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { apiUrl } from '../lib/api'
 
 function StatCard({ label, value }) {
   return (
@@ -24,9 +25,9 @@ export default function AdminDashboard() {
     setSuccess('')
     try {
       const [statsRes, logsRes, collectionRes] = await Promise.all([
-        fetch('/api/admin/stats'),
-        fetch('/api/admin/logs?limit=50'),
-        fetch('/api/developer/collection'),
+        fetch(apiUrl('/api/admin/stats')),
+        fetch(apiUrl('/api/admin/logs?limit=50')),
+        fetch(apiUrl('/api/developer/collection')),
       ])
       setStats(await statsRes.json())
       setLogs(await logsRes.json())
@@ -63,7 +64,7 @@ export default function AdminDashboard() {
     setSuccess('')
 
     try {
-      const response = await fetch(`/api/developer/collection/${action}`, {
+      const response = await fetch(apiUrl(`/api/developer/collection/${action}`), {
         method: 'POST',
       })
       const data = await response.json()

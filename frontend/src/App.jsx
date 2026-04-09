@@ -4,6 +4,7 @@ import MessageInput from './components/MessageInput'
 import TopicSelector from './components/TopicSelector'
 import AdminDashboard from './components/AdminDashboard'
 import DeveloperDashboard from './components/DeveloperDashboard'
+import { apiUrl } from './lib/api'
 import './App.css'
 
 function App() {
@@ -23,7 +24,7 @@ function App() {
     setLoading(true)
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch(apiUrl('/api/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text, topic }),
