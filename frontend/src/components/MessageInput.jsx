@@ -11,35 +11,24 @@ function MessageInput({ onSend, disabled, topic }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '8px' }}>
+    <form onSubmit={handleSubmit} className="message-input-form">
       <input
         type="text"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder={topic ? `Ask about ${topic.replace(/_/g, ' ')}...` : 'Ask about nutrition...'}
+        placeholder={topic ? `Ask about ${topic.replace(/_/g, ' ')}…` : 'Ask about nutrition…'}
         disabled={disabled}
-        style={{
-          flex: 1,
-          padding: '8px',
-          border: '1px solid #000',
-          fontFamily: 'monospace',
-          fontSize: '1rem',
-        }}
+        className="message-input"
       />
       <button
         type="submit"
         disabled={disabled || !text.trim()}
-        style={{
-          padding: '8px 16px',
-          border: '1px solid #000',
-          background: '#000',
-          color: '#fff',
-          fontFamily: 'monospace',
-          fontSize: '1rem',
-          cursor: 'pointer',
-        }}
+        className="send-btn"
       >
         Send
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M1 6h10M6 1l5 5-5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
       </button>
     </form>
   )

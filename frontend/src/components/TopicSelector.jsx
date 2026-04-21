@@ -12,28 +12,19 @@ const TOPICS = [
 
 function TopicSelector({ value, onChange }) {
   return (
-    <div style={{ marginBottom: '12px' }}>
-      <label style={{ fontFamily: 'monospace', fontSize: '0.875rem', marginRight: '8px' }}>
-        Topic:
-      </label>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        style={{
-          padding: '6px 8px',
-          border: '1px solid #000',
-          fontFamily: 'monospace',
-          fontSize: '0.875rem',
-          background: '#fff',
-          cursor: 'pointer',
-        }}
-      >
+    <div className="topic-selector">
+      <span className="topic-label">Topic</span>
+      <div className="topic-pills">
         {TOPICS.map((t) => (
-          <option key={t.value} value={t.value}>
+          <button
+            key={t.value}
+            className={`topic-pill${value === t.value ? ' active' : ''}`}
+            onClick={() => onChange(t.value)}
+          >
             {t.label}
-          </option>
+          </button>
         ))}
-      </select>
+      </div>
     </div>
   )
 }

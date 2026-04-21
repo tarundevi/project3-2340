@@ -1,3 +1,4 @@
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -5,10 +6,45 @@ dist/
 build/
 venv/
 .venv/
+*.pyc
+*.pyo
+*.pyd
+
+# Node
 node_modules/
 frontend/dist/
+frontend/.vite/
+.npm/
+
+# Environment
 .env
+.env.local
+.env.*.local
+
+# Data / databases
 data/
+*.db
+*.sqlite
+*.sqlite3
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Editors
 .vscode/
 .idea/
 *.swp
+*.swo
+*~
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/
+
+# Local notes
+links.txt

@@ -208,53 +208,51 @@ function Message({ role, content, sources = [] }) {
   const shouldRenderMarkdown = role === 'bot'
 
   return (
-    <div
-      className={`message message-${role}`}
-      style={{
-        padding: '8px 12px',
-        margin: '4px 0',
-        border: '1px solid #000',
-        background: role === 'user' ? '#f0f0f0' : '#fff',
-        textAlign: role === 'user' ? 'right' : 'left',
-      }}
-    >
-      <strong>{role === 'user' ? 'You' : 'NutriBot'}</strong>
-      {shouldRenderMarkdown ? (
-        <div className="message-markdown">{renderMarkdown(content)}</div>
-      ) : (
-        <p style={{ marginTop: '4px', whiteSpace: 'pre-wrap' }}>{content}</p>
-      )}
-      {showSources && (
-        <div className="message-sources">
-          <div className="message-sources-label">Sources</div>
-          <div className="source-list">
-            {sources.map((source, index) => {
-              const key = `${source.title}-${index}`
-
-              if (!source.url) {
-                return (
-                  <div key={key} className="source-card source-card-static" title={source.title}>
-                    <span className="source-card-label">{source.title}</span>
-                  </div>
-                )
-              }
-
-              return (
-                <a
-                  key={key}
-                  className="source-card"
-                  href={source.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  title={source.title}
-                >
-                  <span className="source-card-label">{source.title}</span>
-                </a>
-              )
-            })}
-          </div>
+    <div className={`message message-${role}`}>
+      <div className="message-avatar">
+        {role === 'user' ? 'U' : 'N'}
+      </div>
+      <div className="message-body">
+        <div className="message-name">{role === 'user' ? 'You' : 'NutriBot'}</div>
+        <div className="message-bubble">
+          {shouldRenderMarkdown ? (
+            <div className="message-markdown">{renderMarkdown(content)}</div>
+          ) : (
+            <p style={{ whiteSpace: 'pre-wrap' }}>{content}</p>
+          )}
         </div>
-      )}
+        {showSources && (
+          <div className="message-sources">
+            <div className="message-sources-label">Sources</div>
+            <div className="source-list">
+              {sources.map((source, index) => {
+                const key = `${source.title}-${index}`
+
+                if (!source.url) {
+                  return (
+                    <div key={key} className="source-card source-card-static" title={source.title}>
+                      <span className="source-card-label">{source.title}</span>
+                    </div>
+                  )
+                }
+
+                return (
+                  <a
+                    key={key}
+                    className="source-card"
+                    href={source.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={source.title}
+                  >
+                    <span className="source-card-label">{source.title}</span>
+                  </a>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
