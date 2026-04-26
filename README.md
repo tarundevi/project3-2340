@@ -25,6 +25,8 @@ The ChromaDB vector store is persisted via a volume mount at `backend/data/`.
 
 Copy `.env.example` to `.env` and set your Gemini API key to enable LLM responses. Without it, the bot runs in demo mode with stub responses.
 
+Auth defaults to local email/password accounts for development. To use AWS Cognito instead, set `AUTH_MODE=cognito` and fill in the Cognito environment variables in `.env`.
+
 ### Backend
 
 ```bash

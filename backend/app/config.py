@@ -17,6 +17,15 @@ class Settings(BaseSettings):
     s3_bucket_name: str = "nutribot-docs"
     chroma_persist_dir: str = "./data/chromadb"
     cors_allowed_origins: str = "http://localhost:5173"
+    auth_mode: str = "local"
+    auth_db_path: str = "./data/auth.db"
+    auth_jwt_secret: str = "change-me-in-production"
+    auth_jwt_algorithm: str = "HS256"
+    auth_jwt_expiry_minutes: int = 60 * 24
+    aws_region: str = "us-east-1"
+    cognito_user_pool_id: str = ""
+    cognito_app_client_id: str = ""
+    cognito_app_client_secret: str = ""
 
     model_config = SettingsConfigDict(
         env_file=tuple(str(env_file) for env_file in ENV_FILES),

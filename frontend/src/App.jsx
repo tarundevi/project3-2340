@@ -1,21 +1,79 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import ChatWindow from './components/ChatWindow'
 import MessageInput from './components/MessageInput'
 import TopicSelector from './components/TopicSelector'
 import AdminDashboard from './components/AdminDashboard'
 import DeveloperDashboard from './components/DeveloperDashboard'
-import { apiUrl } from './lib/api'
+import AuthPanel from './components/AuthPanel'
+import { apiRequest } from './lib/api'
 import './App.css'
+
+const TOKEN_STORAGE_KEY = 'nutribot.auth.token'
 
 function App() {
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(false)
   const [topic, setTopic] = useState('')
   const [view, setView] = useState('chat')
+  const [token, setToken] = useState('')
+  const [user, setUser] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [authSubmitting, setAuthSubmitting] = useState(false)
+  const [authError, setAuthError] = useState('')
+
+  useEffect(() => {
+    const restoreSession = async () => {
+      const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY)
+      if (!storedToken) {
+        setAuthLoading(false)
+        return
+      }
+
+      try {
+        const me = await apiRequest('/api/auth/me', {}, storedToken)
+        setToken(storedToken)
+        setUser(me)
+      } catch {
+        window.localStorage.removeItem(TOKEN_STORAGE_KEY)
+      } finally {
+        setAuthLoading(false)
+      }
+    }
+
+    restoreSession()
+  }, [])
 
   const handleTopicChange = (newTopic) => {
     setTopic(newTopic)
     setMessages([])
+  }
+
+  const handleAuth = async ({ mode, email, password }) => {
+    setAuthSubmitting(true)
+    setAuthError('')
+
+    try {
+      const data = await apiRequest(`/api/auth/${mode}`, {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      })
+      setToken(data.access_token)
+      setUser(data.user)
+      window.localStorage.setItem(TOKEN_STORAGE_KEY, data.access_token)
+    } catch (error) {
+      setAuthError(error.message)
+    } finally {
+      setAuthSubmitting(false)
+    }
+  }
+
+  const handleLogout = () => {
+    setToken('')
+    setUser(null)
+    setMessages([])
+    setTopic('')
+    setView('chat')
+    window.localStorage.removeItem(TOKEN_STORAGE_KEY)
   }
 
   const sendMessage = async (text) => {
@@ -24,28 +82,38 @@ function App() {
     setLoading(true)
 
     try {
-      const res = await fetch(apiUrl('/api/chat'), {
+      const data = await apiRequest('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: text, topic }),
-      })
-      const data = await res.json()
+      }, token)
       const botMessage = {
         role: 'bot',
         content: data.response,
         sources: Array.isArray(data.sources) ? data.sources : [],
       }
       setMessages((prev) => [...prev, botMessage])
-    } catch {
+    } catch (error) {
       const errorMessage = {
         role: 'bot',
-        content: 'Sorry, something went wrong.',
+        content: error.message || 'Sorry, something went wrong.',
         sources: [],
       }
       setMessages((prev) => [...prev, errorMessage])
     } finally {
       setLoading(false)
     }
+  }
+
+  if (authLoading) {
+    return <div className="app auth-loading">Restoring session…</div>
+  }
+
+  if (!user) {
+    return (
+      <div className="app">
+        <AuthPanel onSubmit={handleAuth} loading={authSubmitting} error={authError} />
+      </div>
+    )
   }
 
   return (
@@ -59,25 +127,33 @@ function App() {
           </div>
           NutriBot
         </div>
-        <div className="nav-tabs">
-          <button
-            className={`nav-tab${view === 'chat' ? ' active' : ''}`}
-            onClick={() => setView('chat')}
-          >
-            Chat
-          </button>
-          <button
-            className={`nav-tab${view === 'admin' ? ' active' : ''}`}
-            onClick={() => setView('admin')}
-          >
-            Admin
-          </button>
-          <button
-            className={`nav-tab${view === 'developer' ? ' active' : ''}`}
-            onClick={() => setView('developer')}
-          >
-            Developer
-          </button>
+        <div className="app-nav-right">
+          <div className="nav-tabs">
+            <button
+              className={`nav-tab${view === 'chat' ? ' active' : ''}`}
+              onClick={() => setView('chat')}
+            >
+              Chat
+            </button>
+            <button
+              className={`nav-tab${view === 'admin' ? ' active' : ''}`}
+              onClick={() => setView('admin')}
+            >
+              Admin
+            </button>
+            <button
+              className={`nav-tab${view === 'developer' ? ' active' : ''}`}
+              onClick={() => setView('developer')}
+            >
+              Developer
+            </button>
+          </div>
+          <div className="session-chip">
+            <span>{user.email}</span>
+            <button type="button" className="session-logout" onClick={handleLogout}>
+              Logout
+            </button>
+          </div>
         </div>
       </div>
 

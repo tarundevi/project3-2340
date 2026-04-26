@@ -14,3 +14,19 @@ class SourceItem(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     sources: list[SourceItem] = []
+
+
+class AuthCredentials(BaseModel):
+    email: str
+    password: str
+
+
+class AuthUser(BaseModel):
+    id: str
+    email: str
+
+
+class AuthResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: AuthUser

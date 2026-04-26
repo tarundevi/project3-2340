@@ -1,8 +1,9 @@
 import time
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.models.schemas import ChatRequest, ChatResponse
+from app.services.auth import get_current_user
 from app.services.retriever import retrieve_context
 from app.services.llm import generate_response
 from app.services.usage_logger import log_query
@@ -11,7 +12,7 @@ router = APIRouter()
 
 
 @router.post("/api/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, current_user: dict = Depends(get_current_user)):
     if not request.message.strip():
         raise HTTPException(status_code=422, detail="Message cannot be empty")
 
@@ -28,7 +29,7 @@ async def chat(request: ChatRequest):
     finally:
         elapsed_ms = int((time.monotonic() - start) * 1000)
         log_query(
-            query=request.message,
+            query=f"[{current_user['email']}] {request.message}",
             topic=request.topic,
             response_time_ms=elapsed_ms,
             success=success,
