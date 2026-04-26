@@ -14,7 +14,7 @@ def setup_module():
         "context": [f"Context for {message}"],
         "sources": [{"title": "Saved Source", "url": "https://example.com/source"}],
     }
-    chat_router.generate_response = lambda message, context, topic="": f"Stored reply: {message}"
+    chat_router.generate_response = lambda message, context, topic="", profile=None: f"Stored reply: {message}"
 
 
 def configure_local_databases(monkeypatch, tmp_path):

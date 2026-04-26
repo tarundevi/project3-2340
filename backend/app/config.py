@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     cognito_user_pool_id: str = ""
     cognito_app_client_id: str = ""
     cognito_app_client_secret: str = ""
+    admin_allowed_emails: str = ""
+    developer_allowed_emails: str = ""
     persistence_mode: str = "local"
     persistence_db_path: str = "./data/persistence.db"
     dynamodb_conversations_table: str = "nutribot-conversations"
@@ -41,6 +43,14 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip()]
+
+    @property
+    def admin_emails(self) -> set[str]:
+        return {email.strip().lower() for email in self.admin_allowed_emails.split(",") if email.strip()}
+
+    @property
+    def developer_emails(self) -> set[str]:
+        return {email.strip().lower() for email in self.developer_allowed_emails.split(",") if email.strip()}
 
 
 settings = Settings()

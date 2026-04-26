@@ -36,6 +36,16 @@ def init_persistence() -> None:
         with _get_local_conn() as conn:
             conn.execute(
                 """
+                CREATE TABLE IF NOT EXISTS profiles (
+                    user_id TEXT PRIMARY KEY,
+                    raw_text TEXT NOT NULL DEFAULT '',
+                    summary_json TEXT NOT NULL DEFAULT '[]',
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS conversations (
                     id TEXT PRIMARY KEY,
                     user_id TEXT NOT NULL,
@@ -69,6 +79,16 @@ def init_persistence() -> None:
                 "CREATE INDEX IF NOT EXISTS idx_messages_conversation_created ON messages(conversation_id, created_at ASC)"
             )
             conn.commit()
+
+
+def _profile_from_row(row: sqlite3.Row | dict[str, Any] | None) -> dict[str, Any]:
+    if not row:
+        return {"raw_text": "", "summary": [], "updated_at": ""}
+    return {
+        "raw_text": row["raw_text"],
+        "summary": json.loads(row["summary_json"]) if row["summary_json"] else [],
+        "updated_at": row["updated_at"],
+    }
 
 
 def _conversation_summary_from_row(row: sqlite3.Row | dict[str, Any]) -> dict[str, Any]:
@@ -220,6 +240,37 @@ def ensure_conversation(user_id: str, conversation_id: str = "", topic: str = ""
     return create_conversation(user_id, title=title, topic=topic)
 
 
+def get_profile(user_id: str) -> dict[str, Any]:
+    if settings.persistence_mode == "aws":
+        return _get_aws_profile(user_id)
+    with _get_local_conn() as conn:
+        row = conn.execute(
+            "SELECT raw_text, summary_json, updated_at FROM profiles WHERE user_id = ?",
+            (user_id,),
+        ).fetchone()
+    return _profile_from_row(row)
+
+
+def save_profile(user_id: str, raw_text: str, summary: list[str]) -> dict[str, Any]:
+    if settings.persistence_mode == "aws":
+        return _save_aws_profile(user_id, raw_text, summary)
+    updated_at = _utc_now()
+    with _get_local_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO profiles (user_id, raw_text, summary_json, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                raw_text = excluded.raw_text,
+                summary_json = excluded.summary_json,
+                updated_at = excluded.updated_at
+            """,
+            (user_id, raw_text, json.dumps(summary), updated_at),
+        )
+        conn.commit()
+    return {"raw_text": raw_text, "summary": summary, "updated_at": updated_at}
+
+
 def _append_local_chat_exchange(
     user_id: str,
     conversation_id: str,
@@ -296,6 +347,10 @@ def _messages_table():
 def _aws_snapshot_key(user_id: str, conversation_id: str) -> str:
     prefix = settings.s3_conversation_prefix.strip("/ ")
     return f"{prefix}/{user_id}/{conversation_id}.json"
+
+
+def _aws_profile_key(user_id: str) -> str:
+    return f"profiles/{user_id}.json"
 
 
 def _create_aws_conversation(user_id: str, title: str = "", topic: str = "") -> dict[str, Any]:
@@ -448,3 +503,44 @@ def _write_aws_snapshot(user_id: str, conversation_id: str, detail: dict[str, An
         Body=json.dumps(detail).encode("utf-8"),
         ContentType="application/json",
     )
+
+
+def _get_aws_profile(user_id: str) -> dict[str, Any]:
+    if not settings.s3_bucket_name:
+        return {"raw_text": "", "summary": [], "updated_at": ""}
+
+    try:
+        response = _aws_s3().get_object(
+            Bucket=settings.s3_bucket_name,
+            Key=_aws_profile_key(user_id),
+        )
+    except Exception:
+        return {"raw_text": "", "summary": [], "updated_at": ""}
+
+    payload = json.loads(response["Body"].read().decode("utf-8"))
+    return {
+        "raw_text": payload.get("raw_text", ""),
+        "summary": payload.get("summary", []),
+        "updated_at": payload.get("updated_at", ""),
+    }
+
+
+def _save_aws_profile(user_id: str, raw_text: str, summary: list[str]) -> dict[str, Any]:
+    updated_at = _utc_now()
+    payload = {
+        "user_id": user_id,
+        "raw_text": raw_text,
+        "summary": summary,
+        "updated_at": updated_at,
+    }
+    _aws_s3().put_object(
+        Bucket=settings.s3_bucket_name,
+        Key=_aws_profile_key(user_id),
+        Body=json.dumps(payload).encode("utf-8"),
+        ContentType="application/json",
+    )
+    return {
+        "raw_text": raw_text,
+        "summary": summary,
+        "updated_at": updated_at,
+    }

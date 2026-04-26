@@ -6,6 +6,7 @@ import AdminDashboard from './components/AdminDashboard'
 import DeveloperDashboard from './components/DeveloperDashboard'
 import AuthPanel from './components/AuthPanel'
 import ConversationSidebar from './components/ConversationSidebar'
+import ProfilePanel from './components/ProfilePanel'
 import { apiRequest } from './lib/api'
 import './App.css'
 
@@ -24,6 +25,12 @@ function App() {
   const [conversations, setConversations] = useState([])
   const [activeConversationId, setActiveConversationId] = useState('')
   const [conversationLoading, setConversationLoading] = useState(false)
+  const [profile, setProfile] = useState({ raw_text: '', summary: [], updated_at: '' })
+  const [profileLoading, setProfileLoading] = useState(false)
+  const [profileSaving, setProfileSaving] = useState(false)
+  const role = user?.role || 'user'
+  const canViewAdmin = role === 'admin'
+  const canViewDeveloper = role === 'admin' || role === 'developer'
 
   const loadConversation = async (conversationId, authToken = token) => {
     if (!conversationId) {
@@ -49,6 +56,17 @@ function App() {
     return Array.isArray(data) ? data : []
   }
 
+  const loadProfile = async (authToken = token) => {
+    setProfileLoading(true)
+    try {
+      const data = await apiRequest('/api/profile', {}, authToken)
+      setProfile(data || { raw_text: '', summary: [], updated_at: '' })
+      return data
+    } finally {
+      setProfileLoading(false)
+    }
+  }
+
   useEffect(() => {
     const restoreSession = async () => {
       const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY)
@@ -61,6 +79,7 @@ function App() {
         const me = await apiRequest('/api/auth/me', {}, storedToken)
         setToken(storedToken)
         setUser(me)
+        await loadProfile(storedToken)
         const existingConversations = await loadConversations(storedToken)
         if (existingConversations[0]?.id) {
           await loadConversation(existingConversations[0].id, storedToken)
@@ -79,18 +98,19 @@ function App() {
     setTopic(newTopic)
   }
 
-  const handleAuth = async ({ mode, email, password }) => {
+  const handleAuth = async ({ mode, email, password, roleKey }) => {
     setAuthSubmitting(true)
     setAuthError('')
 
     try {
       const data = await apiRequest(`/api/auth/${mode}`, {
         method: 'POST',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, role_key: roleKey }),
       })
       setToken(data.access_token)
       setUser(data.user)
       window.localStorage.setItem(TOKEN_STORAGE_KEY, data.access_token)
+      await loadProfile(data.access_token)
       const existingConversations = await loadConversations(data.access_token)
       if (existingConversations[0]?.id) {
         await loadConversation(existingConversations[0].id, data.access_token)
@@ -113,8 +133,18 @@ function App() {
     setView('chat')
     setConversations([])
     setActiveConversationId('')
+    setProfile({ raw_text: '', summary: [], updated_at: '' })
     window.localStorage.removeItem(TOKEN_STORAGE_KEY)
   }
+
+  useEffect(() => {
+    if (view === 'admin' && !canViewAdmin) {
+      setView('chat')
+    }
+    if (view === 'developer' && !canViewDeveloper) {
+      setView('chat')
+    }
+  }, [view, canViewAdmin, canViewDeveloper])
 
   const createConversation = async () => {
     const conversation = await apiRequest('/api/conversations', {
@@ -155,6 +185,19 @@ function App() {
     }
   }
 
+  const saveProfile = async (rawText) => {
+    setProfileSaving(true)
+    try {
+      const data = await apiRequest('/api/profile', {
+        method: 'PUT',
+        body: JSON.stringify({ raw_text: rawText }),
+      }, token)
+      setProfile(data)
+    } finally {
+      setProfileSaving(false)
+    }
+  }
+
   if (authLoading) {
     return <div className="app auth-loading">Restoring session…</div>
   }
@@ -186,18 +229,22 @@ function App() {
             >
               Chat
             </button>
-            <button
-              className={`nav-tab${view === 'admin' ? ' active' : ''}`}
-              onClick={() => setView('admin')}
-            >
-              Admin
-            </button>
-            <button
-              className={`nav-tab${view === 'developer' ? ' active' : ''}`}
-              onClick={() => setView('developer')}
-            >
-              Developer
-            </button>
+            {canViewAdmin ? (
+              <button
+                className={`nav-tab${view === 'admin' ? ' active' : ''}`}
+                onClick={() => setView('admin')}
+              >
+                Admin
+              </button>
+            ) : null}
+            {canViewDeveloper ? (
+              <button
+                className={`nav-tab${view === 'developer' ? ' active' : ''}`}
+                onClick={() => setView('developer')}
+              >
+                Developer
+              </button>
+            ) : null}
           </div>
           <div className="session-chip">
             <span>{user.email}</span>
@@ -218,15 +265,21 @@ function App() {
             onCreate={createConversation}
           />
           <div className="chat-main">
+            <ProfilePanel
+              profile={profile}
+              loading={profileLoading}
+              saving={profileSaving}
+              onSave={saveProfile}
+            />
             <TopicSelector value={topic} onChange={handleTopicChange} />
             <ChatWindow messages={messages} loading={loading || conversationLoading} topic={topic} />
             <MessageInput onSend={sendMessage} disabled={loading || conversationLoading} topic={topic} />
           </div>
         </div>
       ) : view === 'admin' ? (
-        <AdminDashboard />
+        <AdminDashboard token={token} />
       ) : (
-        <DeveloperDashboard />
+        <DeveloperDashboard token={token} />
       )}
     </div>
   )

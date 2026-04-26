@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.models.schemas import ChatRequest, ChatResponse
 from app.services.auth import get_current_user
-from app.services.persistence import PersistenceError, append_chat_exchange, ensure_conversation
+from app.services.persistence import PersistenceError, append_chat_exchange, ensure_conversation, get_profile
 from app.services.retriever import retrieve_context
 from app.services.llm import generate_response
 from app.services.usage_logger import log_query
@@ -22,6 +22,7 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
     sources = []
     conversation_id = request.conversation_id
     try:
+        profile = get_profile(current_user["id"])
         conversation = ensure_conversation(
             current_user["id"],
             conversation_id=request.conversation_id,
@@ -30,7 +31,7 @@ async def chat(request: ChatRequest, current_user: dict = Depends(get_current_us
         )
         conversation_id = conversation["id"]
         retrieval = retrieve_context(request.message, request.topic)
-        response_text = generate_response(request.message, retrieval["context"], request.topic)
+        response_text = generate_response(request.message, retrieval["context"], request.topic, profile=profile)
         sources = retrieval["sources"]
         append_chat_exchange(
             current_user["id"],

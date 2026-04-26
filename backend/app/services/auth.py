@@ -41,9 +41,6 @@ def _get_conn() -> sqlite3.Connection:
 
 
 def init_auth_db() -> None:
-    if settings.auth_mode != "local":
-        return
-
     with _get_conn() as conn:
         conn.execute(
             """
@@ -52,6 +49,15 @@ def init_auth_db() -> None:
                 email TEXT NOT NULL UNIQUE,
                 password_hash TEXT NOT NULL,
                 created_at TEXT NOT NULL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS user_roles (
+                email TEXT PRIMARY KEY,
+                role TEXT NOT NULL,
+                updated_at TEXT NOT NULL
             )
             """
         )
@@ -98,7 +104,60 @@ def _normalize_email(email: str) -> str:
     return email.strip().lower()
 
 
-def signup_local_user(email: str, password: str) -> dict[str, Any]:
+def _role_from_key(role_key: str) -> str:
+    normalized = role_key.strip().lower()
+    if not normalized:
+        return "user"
+    if normalized == "admin":
+        return "admin"
+    if normalized == "dev":
+        return "developer"
+    raise AuthError("Invalid role key.")
+
+
+def _save_user_role(email: str, role: str) -> None:
+    with _get_conn() as conn:
+        conn.execute(
+            """
+            INSERT INTO user_roles (email, role, updated_at)
+            VALUES (?, ?, ?)
+            ON CONFLICT(email) DO UPDATE SET
+                role = excluded.role,
+                updated_at = excluded.updated_at
+            """,
+            (email, role, datetime.now(timezone.utc).isoformat()),
+        )
+        conn.commit()
+
+
+def _stored_user_role(email: str) -> str | None:
+    with _get_conn() as conn:
+        row = conn.execute(
+            "SELECT role FROM user_roles WHERE email = ?",
+            (email,),
+        ).fetchone()
+    return row["role"] if row else None
+
+
+def _user_role(email: str) -> str:
+    normalized_email = _normalize_email(email)
+    stored_role = _stored_user_role(normalized_email)
+    if stored_role:
+        return stored_role
+    if normalized_email in settings.admin_emails:
+        return "admin"
+    if normalized_email in settings.developer_emails:
+        return "developer"
+    return "user"
+
+
+def _apply_role_key(email: str, role_key: str) -> str:
+    role = _role_from_key(role_key)
+    _save_user_role(email, role)
+    return role
+
+
+def signup_local_user(email: str, password: str, role_key: str = "") -> dict[str, Any]:
     normalized_email = _normalize_email(email)
     if len(password) < 8:
         raise AuthError("Password must be at least 8 characters.")
@@ -116,14 +175,17 @@ def signup_local_user(email: str, password: str) -> dict[str, Any]:
     except sqlite3.IntegrityError as exc:
         raise AuthError("An account with that email already exists.") from exc
 
+    if role_key.strip():
+        _apply_role_key(normalized_email, role_key)
+
     return {
-        "user": {"id": normalized_email, "email": normalized_email},
+        "user": {"id": normalized_email, "email": normalized_email, "role": _user_role(normalized_email)},
         "access_token": _issue_local_token(normalized_email),
         "token_type": "bearer",
     }
 
 
-def signin_local_user(email: str, password: str) -> dict[str, Any]:
+def signin_local_user(email: str, password: str, role_key: str = "") -> dict[str, Any]:
     normalized_email = _normalize_email(email)
     with _get_conn() as conn:
         user = conn.execute(
@@ -134,8 +196,11 @@ def signin_local_user(email: str, password: str) -> dict[str, Any]:
     if not user or not _verify_password(password, user["password_hash"]):
         raise AuthError("Invalid email or password.")
 
+    if role_key.strip():
+        _apply_role_key(normalized_email, role_key)
+
     return {
-        "user": {"id": normalized_email, "email": normalized_email},
+        "user": {"id": normalized_email, "email": normalized_email, "role": _user_role(normalized_email)},
         "access_token": _issue_local_token(normalized_email),
         "token_type": "bearer",
     }
@@ -156,7 +221,7 @@ def _cognito_secret_hash(username: str) -> str:
     return base64.b64encode(digest).decode()
 
 
-def signup_cognito_user(email: str, password: str) -> dict[str, Any]:
+def signup_cognito_user(email: str, password: str, role_key: str = "") -> dict[str, Any]:
     normalized_email = _normalize_email(email)
     client = _cognito_client()
     kwargs: dict[str, Any] = {
@@ -179,11 +244,14 @@ def signup_cognito_user(email: str, password: str) -> dict[str, Any]:
     except Exception as exc:
         raise AuthError(str(exc)) from exc
 
+    if role_key.strip():
+        _apply_role_key(normalized_email, role_key)
+
     # Attempt sign-in immediately so the UI has a token if the pool allows it.
-    return signin_cognito_user(normalized_email, password)
+    return signin_cognito_user(normalized_email, password, role_key=role_key)
 
 
-def signin_cognito_user(email: str, password: str) -> dict[str, Any]:
+def signin_cognito_user(email: str, password: str, role_key: str = "") -> dict[str, Any]:
     normalized_email = _normalize_email(email)
     client = _cognito_client()
     auth_parameters = {"USERNAME": normalized_email, "PASSWORD": password}
@@ -205,24 +273,27 @@ def signin_cognito_user(email: str, password: str) -> dict[str, Any]:
     if not access_token:
         raise AuthError("Cognito sign-in did not return an access token.")
 
+    if role_key.strip():
+        _apply_role_key(normalized_email, role_key)
+
     user_info = decode_token(access_token)
     return {
-        "user": {"id": user_info["id"], "email": user_info["email"]},
+        "user": {"id": user_info["id"], "email": user_info["email"], "role": user_info["role"]},
         "access_token": access_token,
         "token_type": "bearer",
     }
 
 
-def signup_user(email: str, password: str) -> dict[str, Any]:
+def signup_user(email: str, password: str, role_key: str = "") -> dict[str, Any]:
     if settings.auth_mode == "cognito":
-        return signup_cognito_user(email, password)
-    return signup_local_user(email, password)
+        return signup_cognito_user(email, password, role_key=role_key)
+    return signup_local_user(email, password, role_key=role_key)
 
 
-def signin_user(email: str, password: str) -> dict[str, Any]:
+def signin_user(email: str, password: str, role_key: str = "") -> dict[str, Any]:
     if settings.auth_mode == "cognito":
-        return signin_cognito_user(email, password)
-    return signin_local_user(email, password)
+        return signin_cognito_user(email, password, role_key=role_key)
+    return signin_local_user(email, password, role_key=role_key)
 
 
 def _get_jwks(jwks_url: str) -> dict[str, Any]:
@@ -251,7 +322,7 @@ def _decode_local_token(token: str) -> dict[str, Any]:
     email = payload.get("email") or payload.get("sub")
     if not email:
         raise AuthError("Token is missing the user email.")
-    return {"id": email, "email": email}
+    return {"id": email, "email": email, "role": _user_role(email)}
 
 
 def _decode_cognito_token(token: str) -> dict[str, Any]:
@@ -286,7 +357,7 @@ def _decode_cognito_token(token: str) -> dict[str, Any]:
     email = payload.get("email") or payload.get("cognito:username") or payload.get("sub")
     if not email:
         raise AuthError("Token is missing the user identity.")
-    return {"id": payload.get("sub") or email, "email": email}
+    return {"id": payload.get("sub") or email, "email": email, "role": _user_role(email)}
 
 
 def decode_token(token: str) -> dict[str, Any]:
@@ -311,6 +382,20 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(exc),
         ) from exc
+
+
+def require_role(*allowed_roles: str):
+    normalized_roles = set(allowed_roles)
+
+    def _dependency(current_user: dict = Depends(get_current_user)) -> dict[str, Any]:
+        if current_user.get("role") not in normalized_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You do not have access to this resource.",
+            )
+        return current_user
+
+    return _dependency
 
 
 def build_guest_password() -> str:

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { apiUrl } from '../lib/api'
+import { apiRequest } from '../lib/api'
 
 function StatCard({ label, value }) {
   return (
@@ -10,7 +10,7 @@ function StatCard({ label, value }) {
   )
 }
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ token }) {
   const [stats, setStats] = useState(null)
   const [logs, setLogs] = useState([])
   const [collection, setCollection] = useState(null)
@@ -25,15 +25,15 @@ export default function AdminDashboard() {
     setSuccess('')
     try {
       const [statsRes, logsRes, collectionRes] = await Promise.all([
-        fetch(apiUrl('/api/admin/stats')),
-        fetch(apiUrl('/api/admin/logs?limit=50')),
-        fetch(apiUrl('/api/developer/collection')),
+        apiRequest('/api/admin/stats', {}, token),
+        apiRequest('/api/admin/logs?limit=50', {}, token),
+        apiRequest('/api/developer/collection', {}, token),
       ])
-      setStats(await statsRes.json())
-      setLogs(await logsRes.json())
-      setCollection(await collectionRes.json())
-    } catch {
-      setError('Failed to load admin data.')
+      setStats(statsRes)
+      setLogs(logsRes)
+      setCollection(collectionRes)
+    } catch (err) {
+      setError(err.message || 'Failed to load admin data.')
     } finally {
       setLoading(false)
     }
@@ -64,13 +64,9 @@ export default function AdminDashboard() {
     setSuccess('')
 
     try {
-      const response = await fetch(apiUrl(`/api/developer/collection/${action}`), {
+      const data = await apiRequest(`/api/developer/collection/${action}`, {
         method: 'POST',
-      })
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.detail || `Failed to ${action} knowledge base.`)
-      }
+      }, token)
 
       setSuccess(data.message)
       setCollection(data.collection)

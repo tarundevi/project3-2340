@@ -1,8 +1,9 @@
 import time
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
+from app.services.auth import require_role
 from app.services.ingestion import (
     IngestionError,
     clear_collection,
@@ -19,6 +20,7 @@ from app.services.llm import generate_response
 from app.services.retriever import retrieve_context
 
 router = APIRouter(prefix="/api/developer")
+developer_guard = Depends(require_role("developer", "admin"))
 
 
 class TextIngestRequest(BaseModel):
@@ -50,12 +52,12 @@ class EvalRequest(BaseModel):
 
 
 @router.get("/collection")
-def collection_overview():
+def collection_overview(_: dict = developer_guard):
     return get_collection_overview()
 
 
 @router.post("/preprocess")
-def preprocess_preview(request: TextIngestRequest):
+def preprocess_preview(request: TextIngestRequest, _: dict = developer_guard):
     result = preprocess_text(request.content)
     title = " ".join(request.title.split()).strip() or "Untitled Document"
     duplicate = is_duplicate_title(title)
@@ -69,7 +71,7 @@ def preprocess_preview(request: TextIngestRequest):
 
 
 @router.post("/collection/clear")
-def clear_knowledge_base():
+def clear_knowledge_base(_: dict = developer_guard):
     return {
         "message": "Knowledge base cleared.",
         "collection": clear_collection(),
@@ -77,7 +79,7 @@ def clear_knowledge_base():
 
 
 @router.post("/collection/reload")
-def reload_knowledge_base():
+def reload_knowledge_base(_: dict = developer_guard):
     return {
         "message": "Knowledge base embeddings reloaded from existing documents.",
         "collection": reload_collection(),
@@ -85,7 +87,7 @@ def reload_knowledge_base():
 
 
 @router.post("/ingest/text")
-def ingest_text(request: TextIngestRequest):
+def ingest_text(request: TextIngestRequest, _: dict = developer_guard):
     try:
         result = ingest_text_document(
             content=request.content,
@@ -105,7 +107,7 @@ def ingest_text(request: TextIngestRequest):
 
 
 @router.post("/ingest/url")
-def ingest_url(request: UrlIngestRequest):
+def ingest_url(request: UrlIngestRequest, _: dict = developer_guard):
     try:
         result = ingest_url_document(url=request.url, topic=request.topic)
     except IngestionError as exc:
@@ -119,7 +121,7 @@ def ingest_url(request: UrlIngestRequest):
 
 
 @router.post("/ingest/file")
-async def ingest_file(file: UploadFile = File(...), topic: str = Form(default="")):
+async def ingest_file(file: UploadFile = File(...), topic: str = Form(default=""), _: dict = developer_guard):
     try:
         result = ingest_uploaded_file(
             filename=file.filename or "",
@@ -137,7 +139,7 @@ async def ingest_file(file: UploadFile = File(...), topic: str = Form(default=""
 
 
 @router.post("/evaluate")
-def evaluate_accuracy(request: EvalRequest):
+def evaluate_accuracy(request: EvalRequest, _: dict = developer_guard):
     if not request.cases:
         raise HTTPException(status_code=400, detail="At least one test case is required.")
 
@@ -202,7 +204,7 @@ def evaluate_accuracy(request: EvalRequest):
 
 
 @router.delete("/document")
-def delete_document_endpoint(request: DeleteDocumentRequest):
+def delete_document_endpoint(request: DeleteDocumentRequest, _: dict = developer_guard):
     try:
         deleted_count = delete_document(
             title=request.title,

@@ -1,7 +1,22 @@
+import tempfile
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 from app.main import app
+from app.services.auth import init_auth_db
+from app.services.persistence import init_persistence
 
 client = TestClient(app)
+
+
+_TEST_DIR = Path(tempfile.mkdtemp(prefix="nutribot-chat-tests-"))
+app_state = __import__("app.config", fromlist=["settings"]).settings
+app_state.auth_mode = "local"
+app_state.auth_db_path = str(_TEST_DIR / "auth.db")
+app_state.persistence_mode = "local"
+app_state.persistence_db_path = str(_TEST_DIR / "persistence.db")
+init_auth_db()
+init_persistence()
 
 
 def setup_module():
@@ -11,7 +26,7 @@ def setup_module():
         "context": [f"Context for {message}"],
         "sources": [{"title": "Test Source", "url": "https://example.com"}],
     }
-    chat_router.generate_response = lambda message, context, topic="": f"Answer: {message}"
+    chat_router.generate_response = lambda message, context, topic="", profile=None: f"Answer: {message}"
 
 
 def auth_headers(email: str = "chat-user@example.com") -> dict[str, str]:

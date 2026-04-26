@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { apiUrl } from '../lib/api'
+import { apiRequest } from '../lib/api'
 
 const TOPICS = [
   { value: '', label: 'All Topics' },
@@ -44,7 +44,7 @@ function TopicField({ value, onChange, id }) {
   )
 }
 
-export default function DeveloperDashboard() {
+export default function DeveloperDashboard({ token }) {
   const [mode, setMode] = useState('text')
   const [textForm, setTextForm] = useState(INITIAL_TEXT_FORM)
   const [urlForm, setUrlForm] = useState(INITIAL_URL_FORM)
@@ -69,11 +69,10 @@ export default function DeveloperDashboard() {
   const loadCollection = async () => {
     setLoading(true)
     try {
-      const response = await fetch(apiUrl('/api/developer/collection'))
-      const data = await response.json()
+      const data = await apiRequest('/api/developer/collection', {}, token)
       setCollection(data)
-    } catch {
-      setError('Failed to load developer data.')
+    } catch (err) {
+      setError(err.message || 'Failed to load developer data.')
     } finally {
       setLoading(false)
     }
@@ -92,7 +91,7 @@ export default function DeveloperDashboard() {
     setSuccess('')
 
     try {
-      const response = await fetch(apiUrl('/api/developer/document'), {
+      const data = await apiRequest('/api/developer/document', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -100,11 +99,7 @@ export default function DeveloperDashboard() {
           url: document.url,
           topic: document.topic,
         }),
-      })
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.detail || 'Delete failed.')
-      }
+      }, token)
 
       setSuccess(data.message)
       setCollection(data.collection)
@@ -130,13 +125,9 @@ export default function DeveloperDashboard() {
     setSuccess('')
 
     try {
-      const response = await fetch(apiUrl(`/api/developer/collection/${action}`), {
+      const data = await apiRequest(`/api/developer/collection/${action}`, {
         method: 'POST',
-      })
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.detail || `Failed to ${action} knowledge base.`)
-      }
+      }, token)
 
       setSuccess(data.message)
       setCollection(data.collection)
@@ -156,13 +147,11 @@ export default function DeveloperDashboard() {
     setError('')
     setPreviewData(null)
     try {
-      const response = await fetch(apiUrl('/api/developer/preprocess'), {
+      const data = await apiRequest('/api/developer/preprocess', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(textForm),
-      })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.detail || 'Preview failed.')
+      }, token)
       setPreviewData(data)
     } catch (err) {
       setError(err.message)
@@ -178,15 +167,11 @@ export default function DeveloperDashboard() {
     setSuccess('')
 
     try {
-      const response = await fetch(apiUrl('/api/developer/ingest/text'), {
+      const data = await apiRequest('/api/developer/ingest/text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(textForm),
-      })
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.detail || 'Text ingestion failed.')
-      }
+      }, token)
 
       setSuccess(data.message)
       setCollection(data.collection)
@@ -206,15 +191,11 @@ export default function DeveloperDashboard() {
     setSuccess('')
 
     try {
-      const response = await fetch(apiUrl('/api/developer/ingest/url'), {
+      const data = await apiRequest('/api/developer/ingest/url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(urlForm),
-      })
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.detail || 'URL ingestion failed.')
-      }
+      }, token)
 
       setSuccess(data.message)
       setCollection(data.collection)
@@ -242,14 +223,10 @@ export default function DeveloperDashboard() {
       formData.append('file', fileForm.file)
       formData.append('topic', fileForm.topic)
 
-      const response = await fetch(apiUrl('/api/developer/ingest/file'), {
+      const data = await apiRequest('/api/developer/ingest/file', {
         method: 'POST',
         body: formData,
-      })
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.detail || 'File upload failed.')
-      }
+      }, token)
 
       setSuccess(data.message)
       setCollection(data.collection)
@@ -285,13 +262,11 @@ export default function DeveloperDashboard() {
     setEvalResults(null)
     setExpandedResult(null)
     try {
-      const response = await fetch(apiUrl('/api/developer/evaluate'), {
+      const data = await apiRequest('/api/developer/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cases: valid }),
-      })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.detail || 'Evaluation failed.')
+      }, token)
       setEvalResults(data)
       setTimeout(() => evalResultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
     } catch (err) {

@@ -1,4 +1,5 @@
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -7,7 +8,9 @@ SYSTEM_PROMPT = (
     "Answer questions about nutrition, diet, and healthy eating based on the "
     "provided context. If the context doesn't contain relevant information, "
     "use your general nutrition knowledge but note that the information is general advice. "
-    "Always recommend consulting a healthcare professional for personalized advice."
+    "Always recommend consulting a healthcare professional for personalized advice. "
+    "When a user profile is provided, treat allergies, intolerances, medical conditions, "
+    "and dietary goals as hard constraints for your recommendations."
 )
 
 STUB_RESPONSE = (
@@ -18,7 +21,63 @@ STUB_RESPONSE = (
 )
 
 
-def generate_response(query: str, context: list[str], topic: str = "") -> str:
+def summarize_profile(raw_text: str) -> list[str]:
+    cleaned = " ".join(raw_text.split()).strip()
+    if not cleaned:
+        return []
+
+    parts = [segment.strip(" ,") for segment in re.split(r"[.\n;]+", cleaned) if segment.strip()]
+    conditions = []
+    allergies = []
+    goals = []
+    other = []
+
+    for part in parts:
+        lowered = part.lower()
+        if any(token in lowered for token in ("allerg", "intoler", "avoid", "cannot eat", "can't eat")):
+            allergies.append(part)
+        elif any(token in lowered for token in ("goal", "want to", "trying to", "aim", "lose", "gain", "build", "maintain")):
+            goals.append(part)
+        elif any(token in lowered for token in ("condition", "diabetes", "blood pressure", "cholesterol", "celiac", "ibs", "pregnan", "kidney", "hypertension")):
+            conditions.append(part)
+        else:
+            other.append(part)
+
+    summary = []
+    if conditions:
+        summary.append(f"Health conditions: {', '.join(conditions[:3])}.")
+    if allergies:
+        summary.append(f"Allergies or restrictions: {', '.join(allergies[:3])}.")
+    if goals:
+        summary.append(f"Dietary goals: {', '.join(goals[:3])}.")
+    if other:
+        summary.append(f"Additional context: {', '.join(other[:2])}.")
+
+    return summary[:4] if summary else [cleaned]
+
+
+def _profile_block(profile: dict | None) -> str:
+    if not profile:
+        return ""
+
+    raw_text = (profile.get("raw_text") or "").strip()
+    summary = profile.get("summary") or []
+    if not raw_text and not summary:
+        return ""
+
+    summary_lines = "\n".join(f"- {item}" for item in summary) if summary else "- No structured summary available."
+    raw_line = raw_text if raw_text else "None provided."
+
+    return (
+        "User profile constraints:\n"
+        f"{summary_lines}\n"
+        f"Raw profile text: {raw_line}\n"
+        "Use this profile to filter recommendations. Do not suggest foods or plans that conflict with allergies, "
+        "medical conditions, or stated restrictions. Flag uncertainty and advise clinician follow-up when risk is non-trivial.\n\n"
+    )
+
+
+def generate_response(query: str, context: list[str], topic: str = "", profile: dict | None = None) -> str:
     from app.config import settings
 
     if not settings.gemini_api_key:
@@ -36,13 +95,15 @@ def generate_response(query: str, context: list[str], topic: str = "") -> str:
 
         context_text = "\n\n".join(context) if context else "No specific context available."
         topic_line = f"Topic focus: {topic}\n\n" if topic else ""
+        profile_block = _profile_block(profile)
 
         prompt = (
             (f"Instructions:\n{SYSTEM_PROMPT}\n\n" if settings.gemini_model_id.startswith("gemma-") else "")
             + f"{topic_line}"
-            f"Context:\n{context_text}\n\n"
-            f"Question: {query}\n\n"
-            "Please answer the question based on the context provided."
+            + profile_block
+            + f"Context:\n{context_text}\n\n"
+            + f"Question: {query}\n\n"
+            + "Please answer the question based on the context provided."
         )
 
         response = model.generate_content(prompt)

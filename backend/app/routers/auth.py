@@ -9,7 +9,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 @router.post("/signup", response_model=AuthResponse)
 def signup(credentials: AuthCredentials):
     try:
-        return signup_user(credentials.email, credentials.password)
+        return signup_user(credentials.email, credentials.password, role_key=credentials.role_key)
     except AuthError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -17,7 +17,7 @@ def signup(credentials: AuthCredentials):
 @router.post("/signin", response_model=AuthResponse)
 def signin(credentials: AuthCredentials):
     try:
-        return signin_user(credentials.email, credentials.password)
+        return signin_user(credentials.email, credentials.password, role_key=credentials.role_key)
     except AuthError as exc:
         raise HTTPException(status_code=401, detail=str(exc)) from exc
 

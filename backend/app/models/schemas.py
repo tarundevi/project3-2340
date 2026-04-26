@@ -21,11 +21,13 @@ class ChatResponse(BaseModel):
 class AuthCredentials(BaseModel):
     email: str
     password: str
+    role_key: str = ""
 
 
 class AuthUser(BaseModel):
     id: str
     email: str
+    role: str = "user"
 
 
 class AuthResponse(BaseModel):
@@ -59,3 +61,13 @@ class ConversationDetail(BaseModel):
 class CreateConversationRequest(BaseModel):
     title: str = ""
     topic: str = ""
+
+
+class UserProfile(BaseModel):
+    raw_text: str = ""
+    summary: list[str] = []
+    updated_at: str = ""
+
+
+class ProfileRequest(BaseModel):
+    raw_text: str

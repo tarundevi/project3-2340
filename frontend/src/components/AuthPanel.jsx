@@ -4,10 +4,11 @@ export default function AuthPanel({ onSubmit, loading, error }) {
   const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [roleKey, setRoleKey] = useState('')
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    await onSubmit({ mode, email, password })
+    await onSubmit({ mode, email, password, roleKey })
   }
 
   return (
@@ -59,6 +60,17 @@ export default function AuthPanel({ onSubmit, loading, error }) {
               autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
               minLength={8}
               required
+            />
+          </label>
+
+          <label className="auth-label">
+            Role Key
+            <input
+              type="text"
+              className="auth-input"
+              value={roleKey}
+              onChange={(event) => setRoleKey(event.target.value)}
+              placeholder="Optional: admin or dev"
             />
           </label>
 
