@@ -5,6 +5,7 @@ import TopicSelector from './components/TopicSelector'
 import AdminDashboard from './components/AdminDashboard'
 import DeveloperDashboard from './components/DeveloperDashboard'
 import AuthPanel from './components/AuthPanel'
+import ConversationSidebar from './components/ConversationSidebar'
 import { apiRequest } from './lib/api'
 import './App.css'
 
@@ -20,6 +21,33 @@ function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [authSubmitting, setAuthSubmitting] = useState(false)
   const [authError, setAuthError] = useState('')
+  const [conversations, setConversations] = useState([])
+  const [activeConversationId, setActiveConversationId] = useState('')
+  const [conversationLoading, setConversationLoading] = useState(false)
+
+  const loadConversation = async (conversationId, authToken = token) => {
+    if (!conversationId) {
+      setMessages([])
+      setActiveConversationId('')
+      return
+    }
+
+    setConversationLoading(true)
+    try {
+      const data = await apiRequest(`/api/conversations/${conversationId}`, {}, authToken)
+      setActiveConversationId(conversationId)
+      setMessages(data.messages || [])
+      setTopic(data.conversation?.topic || '')
+    } finally {
+      setConversationLoading(false)
+    }
+  }
+
+  const loadConversations = async (authToken = token) => {
+    const data = await apiRequest('/api/conversations', {}, authToken)
+    setConversations(Array.isArray(data) ? data : [])
+    return Array.isArray(data) ? data : []
+  }
 
   useEffect(() => {
     const restoreSession = async () => {
@@ -33,6 +61,10 @@ function App() {
         const me = await apiRequest('/api/auth/me', {}, storedToken)
         setToken(storedToken)
         setUser(me)
+        const existingConversations = await loadConversations(storedToken)
+        if (existingConversations[0]?.id) {
+          await loadConversation(existingConversations[0].id, storedToken)
+        }
       } catch {
         window.localStorage.removeItem(TOKEN_STORAGE_KEY)
       } finally {
@@ -45,7 +77,6 @@ function App() {
 
   const handleTopicChange = (newTopic) => {
     setTopic(newTopic)
-    setMessages([])
   }
 
   const handleAuth = async ({ mode, email, password }) => {
@@ -60,6 +91,13 @@ function App() {
       setToken(data.access_token)
       setUser(data.user)
       window.localStorage.setItem(TOKEN_STORAGE_KEY, data.access_token)
+      const existingConversations = await loadConversations(data.access_token)
+      if (existingConversations[0]?.id) {
+        await loadConversation(existingConversations[0].id, data.access_token)
+      } else {
+        setMessages([])
+        setActiveConversationId('')
+      }
     } catch (error) {
       setAuthError(error.message)
     } finally {
@@ -73,7 +111,23 @@ function App() {
     setMessages([])
     setTopic('')
     setView('chat')
+    setConversations([])
+    setActiveConversationId('')
     window.localStorage.removeItem(TOKEN_STORAGE_KEY)
+  }
+
+  const createConversation = async () => {
+    const conversation = await apiRequest('/api/conversations', {
+      method: 'POST',
+      body: JSON.stringify({ title: '', topic }),
+    }, token)
+
+    const refreshed = await loadConversations(token)
+    setActiveConversationId(conversation.id)
+    setMessages([])
+    if (!refreshed.some((item) => item.id === conversation.id)) {
+      setConversations((prev) => [conversation, ...prev])
+    }
   }
 
   const sendMessage = async (text) => {
@@ -84,14 +138,11 @@ function App() {
     try {
       const data = await apiRequest('/api/chat', {
         method: 'POST',
-        body: JSON.stringify({ message: text, topic }),
+        body: JSON.stringify({ message: text, topic, conversation_id: activeConversationId }),
       }, token)
-      const botMessage = {
-        role: 'bot',
-        content: data.response,
-        sources: Array.isArray(data.sources) ? data.sources : [],
-      }
-      setMessages((prev) => [...prev, botMessage])
+      const conversationId = data.conversation_id || activeConversationId
+      await loadConversation(conversationId, token)
+      await loadConversations(token)
     } catch (error) {
       const errorMessage = {
         role: 'bot',
@@ -158,11 +209,20 @@ function App() {
       </div>
 
       {view === 'chat' ? (
-        <>
-          <TopicSelector value={topic} onChange={handleTopicChange} />
-          <ChatWindow messages={messages} loading={loading} topic={topic} />
-          <MessageInput onSend={sendMessage} disabled={loading} topic={topic} />
-        </>
+        <div className="chat-layout">
+          <ConversationSidebar
+            conversations={conversations}
+            activeConversationId={activeConversationId}
+            loading={conversationLoading}
+            onSelect={loadConversation}
+            onCreate={createConversation}
+          />
+          <div className="chat-main">
+            <TopicSelector value={topic} onChange={handleTopicChange} />
+            <ChatWindow messages={messages} loading={loading || conversationLoading} topic={topic} />
+            <MessageInput onSend={sendMessage} disabled={loading || conversationLoading} topic={topic} />
+          </div>
+        </div>
       ) : view === 'admin' ? (
         <AdminDashboard />
       ) : (

@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     gemini_model_id: str = "gemma-3-27b-it"
     s3_bucket_name: str = "nutribot-docs"
+    s3_conversation_prefix: str = "conversations"
     chroma_persist_dir: str = "./data/chromadb"
     cors_allowed_origins: str = "http://localhost:5173"
     auth_mode: str = "local"
@@ -26,6 +27,10 @@ class Settings(BaseSettings):
     cognito_user_pool_id: str = ""
     cognito_app_client_id: str = ""
     cognito_app_client_secret: str = ""
+    persistence_mode: str = "local"
+    persistence_db_path: str = "./data/persistence.db"
+    dynamodb_conversations_table: str = "nutribot-conversations"
+    dynamodb_messages_table: str = "nutribot-messages"
 
     model_config = SettingsConfigDict(
         env_file=tuple(str(env_file) for env_file in ENV_FILES),

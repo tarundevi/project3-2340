@@ -171,6 +171,11 @@ def signup_cognito_user(email: str, password: str) -> dict[str, Any]:
 
     try:
         client.sign_up(**kwargs)
+        if settings.cognito_user_pool_id:
+            client.admin_confirm_sign_up(
+                UserPoolId=settings.cognito_user_pool_id,
+                Username=normalized_email,
+            )
     except Exception as exc:
         raise AuthError(str(exc)) from exc
 

@@ -27,6 +27,8 @@ Copy `.env.example` to `.env` and set your Gemini API key to enable LLM response
 
 Auth defaults to local email/password accounts for development. To use AWS Cognito instead, set `AUTH_MODE=cognito` and fill in the Cognito environment variables in `.env`.
 
+Conversation persistence also defaults to local SQLite for development. To use AWS-backed persistence, set `PERSISTENCE_MODE=aws` and configure DynamoDB table names plus the S3 bucket/prefix used for conversation snapshots.
+
 ### Backend
 
 ```bash
@@ -54,3 +56,25 @@ cd backend
 pip install -r requirements.txt
 python -m pytest tests/ -v
 ```
+
+## Deployment Notes
+
+### Railway backend
+
+Set these environment variables in Railway:
+
+- `AUTH_MODE`
+- `AUTH_JWT_SECRET` for local auth, or the Cognito variables for managed auth
+- `PERSISTENCE_MODE`
+- `AWS_REGION`
+- `DYNAMODB_CONVERSATIONS_TABLE`
+- `DYNAMODB_MESSAGES_TABLE`
+- `S3_BUCKET_NAME`
+- `S3_CONVERSATION_PREFIX`
+- `GEMINI_API_KEY`
+
+`backend/railway.toml` only controls build/start; Railway environment variables still need to be configured in the Railway dashboard.
+
+### Vercel frontend
+
+Set `VITE_API_BASE_URL` in Vercel so the frontend points at the deployed backend. The repo now includes [`frontend/vercel.json`](/Users/tarun/workspace/classes/CS2340/project3-2340/frontend/vercel.json) with an SPA rewrite to `index.html`.
