@@ -1065,6 +1065,39 @@ body {
   color: var(--danger);
 }
 
+.stat-card-alert {
+  border-color: var(--danger);
+  background: #fdf2f2;
+}
+
+.stat-card-alert .stat-value {
+  color: var(--danger);
+}
+
+.perf-chart-wrapper {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px 6px;
+  background: var(--bg-subtle);
+  overflow-x: auto;
+}
+
+.perf-chart-empty {
+  color: var(--text-faint);
+  font-size: 12px;
+  padding: 24px;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-subtle);
+}
+
+.perf-chart-legend {
+  font-size: 10.5px;
+  color: var(--text-faint);
+  margin-top: 4px;
+}
+
 .preprocess-actions {
   display: flex;
   gap: 8px;

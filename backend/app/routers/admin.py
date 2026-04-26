@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from app.services.auth import require_role
-from app.services.usage_logger import get_logs, get_stats
+from app.services.usage_logger import get_logs, get_performance_metrics, get_stats
 
 router = APIRouter(prefix="/api/admin")
 
@@ -14,3 +14,8 @@ def list_logs(limit: int = 100, _: dict = Depends(require_role("admin"))):
 @router.get("/stats")
 def usage_stats(_: dict = Depends(require_role("admin"))):
     return get_stats()
+
+
+@router.get("/performance")
+def performance_metrics(_: dict = Depends(require_role("admin"))):
+    return get_performance_metrics()
