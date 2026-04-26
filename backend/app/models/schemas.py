@@ -16,6 +16,7 @@ class ChatResponse(BaseModel):
     response: str
     sources: list[SourceItem] = []
     conversation_id: str = ""
+    intent: str = ""
 
 
 class AuthCredentials(BaseModel):

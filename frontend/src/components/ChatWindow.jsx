@@ -25,7 +25,7 @@ function ChatWindow({ messages, loading, topic }) {
         </div>
       )}
       {messages.map((msg, i) => (
-        <Message key={i} role={msg.role} content={msg.content} sources={msg.sources} />
+        <Message key={i} role={msg.role} content={msg.content} sources={msg.sources} intent={msg.intent} />
       ))}
       {loading && (
         <div className="typing-indicator">

@@ -3,6 +3,54 @@ import re
 
 logger = logging.getLogger(__name__)
 
+_CREATIVE_RE = re.compile(
+    r"\b(give me|create|suggest|make me|plan|recipe|meal plan|design|"
+    r"recommend|help me|ideas|options|alternatives|what should i|"
+    r"what can i|how can i|prepare|cook|weekly|daily|routine|schedule|menu)\b",
+    re.IGNORECASE,
+)
+_EXPLANATION_RE = re.compile(
+    r"\b(why|how does|how do|explain|what causes|what happens|"
+    r"what effect|what impact|reason|mechanism|process|"
+    r"difference between|compare|versus|vs\.?|benefit|risk|"
+    r"interact|interaction|affect|effect|describe)\b",
+    re.IGNORECASE,
+)
+_FACTUAL_RE = re.compile(
+    r"\b(what is|what are|what was|what were|how much|how many|"
+    r"is it|is there|are there|does |which|when |where |"
+    r"list|name|define|definition|contain|amount|"
+    r"calorie|protein|carb|fat|nutrient|vitamin|mineral|safe|"
+    r"allowed|permitted|avoid)\b",
+    re.IGNORECASE,
+)
+
+_INTENT_INSTRUCTIONS: dict[str, str] = {
+    "factual": (
+        "Answer directly and concisely. State the key fact first, then add brief "
+        "supporting detail. Cite the source from the context if it supports your answer."
+    ),
+    "explanation": (
+        "Provide a thorough, step-by-step explanation. Clarify the underlying mechanism, "
+        "reason, or process. Use examples where helpful and cite supporting context."
+    ),
+    "creative": (
+        "Generate a practical, actionable response with specific items, quantities, or steps. "
+        "Be concrete rather than general. Tailor all suggestions to the user's profile "
+        "constraints listed above."
+    ),
+}
+
+
+def classify_intent(query: str) -> str:
+    scores = {
+        "creative": len(_CREATIVE_RE.findall(query)),
+        "explanation": len(_EXPLANATION_RE.findall(query)),
+        "factual": len(_FACTUAL_RE.findall(query)),
+    }
+    best = max(scores, key=lambda k: scores[k])
+    return best if scores[best] > 0 else "factual"
+
 SYSTEM_PROMPT = (
     "You are NutriBot, a knowledgeable nutritionist assistant. "
     "Answer questions about nutrition, diet, and healthy eating based on the "
@@ -112,12 +160,16 @@ def generate_ingredient_interaction(ingredient: str, context: list[str], profile
         return STUB_RESPONSE
 
 
-def generate_response(query: str, context: list[str], topic: str = "", profile: dict | None = None) -> str:
+def generate_response(query: str, context: list[str], topic: str = "", profile: dict | None = None, intent: str = "") -> str:
     from app.config import settings
 
     if not settings.gemini_api_key:
         logger.warning("Gemini API key not configured, returning stub response")
         return STUB_RESPONSE
+
+    resolved_intent = intent if intent in _INTENT_INSTRUCTIONS else classify_intent(query)
+    intent_instruction = _INTENT_INSTRUCTIONS[resolved_intent]
+    logger.info(f"Intent: {resolved_intent} | Query: {query[:80]}")
 
     try:
         import google.generativeai as genai
@@ -138,7 +190,7 @@ def generate_response(query: str, context: list[str], topic: str = "", profile: 
             + profile_block
             + f"Context:\n{context_text}\n\n"
             + f"Question: {query}\n\n"
-            + "Please answer the question based on the context provided."
+            + f"Response style: {intent_instruction}"
         )
 
         response = model.generate_content(prompt)

@@ -172,7 +172,20 @@ function App() {
         body: JSON.stringify({ message: text, topic, conversation_id: activeConversationId }),
       }, token)
       const conversationId = data.conversation_id || activeConversationId
+      const detectedIntent = data.intent || ''
       await loadConversation(conversationId, token)
+      if (detectedIntent) {
+        setMessages((prev) => {
+          const updated = [...prev]
+          for (let i = updated.length - 1; i >= 0; i--) {
+            if (updated[i].role === 'bot') {
+              updated[i] = { ...updated[i], intent: detectedIntent }
+              break
+            }
+          }
+          return updated
+        })
+      }
       await loadConversations(token)
     } catch (error) {
       const errorMessage = {

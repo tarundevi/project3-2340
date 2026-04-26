@@ -203,9 +203,16 @@ function renderMarkdown(content) {
   return blocks
 }
 
-function Message({ role, content, sources = [] }) {
+const INTENT_LABELS = {
+  factual: { label: 'Factual', color: '#1a5c38' },
+  explanation: { label: 'Explanation', color: '#1a4a8a' },
+  creative: { label: 'Creative', color: '#7b3fa0' },
+}
+
+function Message({ role, content, sources = [], intent = '' }) {
   const showSources = role === 'bot' && sources.length > 0
   const shouldRenderMarkdown = role === 'bot'
+  const intentMeta = role === 'bot' && intent ? INTENT_LABELS[intent] : null
 
   return (
     <div className={`message message-${role}`}>
@@ -213,7 +220,24 @@ function Message({ role, content, sources = [] }) {
         {role === 'user' ? 'U' : 'N'}
       </div>
       <div className="message-body">
-        <div className="message-name">{role === 'user' ? 'You' : 'NutriBot'}</div>
+        <div className="message-name">
+          {role === 'user' ? 'You' : 'NutriBot'}
+          {intentMeta && (
+            <span style={{
+              marginLeft: '8px',
+              fontSize: '11px',
+              fontWeight: 600,
+              padding: '2px 7px',
+              borderRadius: '10px',
+              background: intentMeta.color + '18',
+              color: intentMeta.color,
+              border: `1px solid ${intentMeta.color}40`,
+              letterSpacing: '0.02em',
+            }}>
+              {intentMeta.label}
+            </span>
+          )}
+        </div>
         <div className="message-bubble">
           {shouldRenderMarkdown ? (
             <div className="message-markdown">{renderMarkdown(content)}</div>
