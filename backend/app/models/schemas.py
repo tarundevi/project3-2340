@@ -71,3 +71,12 @@ class UserProfile(BaseModel):
 
 class ProfileRequest(BaseModel):
     raw_text: str
+
+
+class IngredientCheckRequest(BaseModel):
+    ingredient: str
+
+
+class IngredientCheckResponse(BaseModel):
+    response: str
+    sources: list[SourceItem] = []

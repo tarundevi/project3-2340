@@ -7,6 +7,7 @@ import DeveloperDashboard from './components/DeveloperDashboard'
 import AuthPanel from './components/AuthPanel'
 import ConversationSidebar from './components/ConversationSidebar'
 import ProfilePanel from './components/ProfilePanel'
+import IngredientChecker from './components/IngredientChecker'
 import { apiRequest } from './lib/api'
 import './App.css'
 
@@ -198,6 +199,13 @@ function App() {
     }
   }
 
+  const checkIngredient = async (ingredient) => {
+    return await apiRequest('/api/profile/ingredient-check', {
+      method: 'POST',
+      body: JSON.stringify({ ingredient }),
+    }, token)
+  }
+
   if (authLoading) {
     return <div className="app auth-loading">Restoring session…</div>
   }
@@ -271,6 +279,7 @@ function App() {
               saving={profileSaving}
               onSave={saveProfile}
             />
+            <IngredientChecker onCheck={checkIngredient} hasProfile={Boolean(profile?.raw_text?.trim())} />
             <TopicSelector value={topic} onChange={handleTopicChange} />
             <ChatWindow messages={messages} loading={loading || conversationLoading} topic={topic} />
             <MessageInput onSend={sendMessage} disabled={loading || conversationLoading} topic={topic} />

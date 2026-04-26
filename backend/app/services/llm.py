@@ -77,6 +77,41 @@ def _profile_block(profile: dict | None) -> str:
     )
 
 
+def generate_ingredient_interaction(ingredient: str, context: list[str], profile: dict | None = None) -> str:
+    from app.config import settings
+
+    if not settings.gemini_api_key:
+        logger.warning("Gemini API key not configured, returning stub response")
+        return STUB_RESPONSE
+
+    try:
+        import google.generativeai as genai
+
+        genai.configure(api_key=settings.gemini_api_key)
+        model_kwargs = {"model_name": settings.gemini_model_id}
+        if not settings.gemini_model_id.startswith("gemma-"):
+            model_kwargs["system_instruction"] = SYSTEM_PROMPT
+        model = genai.GenerativeModel(**model_kwargs)
+
+        context_text = "\n\n".join(context) if context else "No specific context available."
+        profile_block = _profile_block(profile)
+
+        prompt = (
+            (f"Instructions:\n{SYSTEM_PROMPT}\n\n" if settings.gemini_model_id.startswith("gemma-") else "")
+            + profile_block
+            + f"Context from clinical resources:\n{context_text}\n\n"
+            + f"The user wants to understand how the ingredient '{ingredient}' interacts with their specific health conditions listed above.\n"
+            + "Explain clearly which of their conditions or restrictions are relevant to this ingredient, why it may be restricted or safe, "
+            + "and cite the supporting reason from the clinical resources. If no conditions apply, say so plainly."
+        )
+
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        logger.error(f"Gemini call failed: {e}")
+        return STUB_RESPONSE
+
+
 def generate_response(query: str, context: list[str], topic: str = "", profile: dict | None = None) -> str:
     from app.config import settings
 
